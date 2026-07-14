@@ -1,155 +1,285 @@
 # ThreadNations
 
-ThreadNations is a Rust-built autonomous civilization simulation where every AI coding thread can become a nation.
+ThreadNations is a Rust-built autonomous civilization simulation that runs continuously as a persistent desktop companion.
 
-The player does not directly control armies, cities, governments, or economies. The player creates the world by working, coding, researching, designing, and thinking through AI conversations. Those conversations become civilizations. Those civilizations grow, trade, govern themselves, form religions, fight wars, collapse, migrate, industrialize, and leave history behind.
+It appears in its own resizable window, which can be placed on any monitor and left running while the user works. The world does not wait for commands. Nations emerge, grow, trade, govern themselves, form religions, fight wars, industrialize, collapse, migrate, and leave history behind entirely on their own.
 
-The goal is a living desktop world that feels like Dwarf Fortress, Victoria 3, The Political Process, an idle sim, and an AI activity companion all got thrown into a weird little nation blender.
+AI and coding activity do not determine what a nation becomes. Thread subject matter is never translated into agriculture, industry, religion, government, military doctrine, or culture. Activity only supplies neutral simulation momentum.
+
+The result is a living desktop world inspired by the emergent history of Dwarf Fortress, the political and economic simulation of Victoria 3, the passive progression of an idle game, and the ambient presence of a desktop companion.
 
 ## Core Concept
 
-ThreadNations runs as a persistent desktop companion, transparent overlay, wallpaper layer, or standalone world viewer.
+ThreadNations runs as a persistent desktop companion window that can be moved to any monitor and left open for long periods of time.
 
-Every meaningful AI thread can create or influence a nation:
+There is no direct gameplay input. The user does not issue orders, build cities, choose governments, declare wars, assign production, or steer national development.
 
-- A Codex-heavy Rust engine thread might create an engineering republic.
-- A Claude research thread might create a university-driven scientific state.
-- A ChatGPT worldbuilding thread might create a culture-heavy kingdom.
-- A finance or tax thread might create a bureaucracy-focused trade republic.
-- A farming game mod thread might create an agricultural nation with animal husbandry and crop specialization.
+The simulation is fully autonomous.
 
-Each thread becomes history. Long-running projects become ancient powers. Abandoned threads may stagnate, fragment, or get swallowed by stronger neighbors.
+AI usage, coding activity, and active work sessions act only as neutral energy for the world. They may affect how quickly simulation opportunities accumulate, when new nations appear, or how much developmental pressure enters the world, but they never determine the content or identity of a nation.
+
+A Rust coding thread does not automatically create an engineering state. A research session does not automatically create a scientific republic. A conversation about farming does not create an agricultural nation.
+
+Instead, every nation develops from the world itself:
+
+- Geography
+- Climate
+- Natural resources
+- Population pressure
+- Trade access
+- Neighboring powers
+- Internal politics
+- Religion and culture
+- Historical events
+- War and diplomacy
+- Procedural variation
+
+AI activity creates motion. The simulation decides what that motion becomes.
 
 ## Design Pillars
 
-1. **Rust first**  
-   The project should be implemented in Rust, using Rust-native architecture wherever possible.
+1. **Autonomous simulation**  
+   ThreadNations has no gameplay commands. The world continues autonomously whether or not the user is watching; map navigation and inspection never affect outcomes.
 
-2. **Usage creates nations**  
-   Nations spawn from AI usage, coding activity, thread length, project focus, provider source, and conversation metadata.
+2. **Persistent desktop presence**  
+   The simulation runs in a dedicated companion window that can be resized, repositioned, and placed on any monitor.
 
-3. **Usage grows nations**  
-   Token activity, session duration, code output, thread age, and topic classification become labor, research, production, culture, population pressure, and economic momentum.
+3. **Activity supplies momentum, not meaning**  
+   AI and coding activity influence simulation intensity, timing, and growth pressure. Conversation topics, prompts, code subjects, and project content do not shape national identity.
 
-4. **Autonomous simulation**  
-   Nations should not wait for direct player commands. They should grow, migrate, trade, govern, ally, fight, industrialize, collapse, and rebuild on their own.
+4. **Procedural national development**  
+   Nations derive their identity and specialization from geography, resources, history, population, politics, trade, and deterministic procedural systems.
 
-5. **Procedural infinite world**  
-   The world map is borderless and ever-expanding. Land, biomes, resources, hazards, and settlement sites are generated procedurally as the simulation needs them.
+5. **Autonomous history**  
+   Nations expand, migrate, trade, ally, govern, industrialize, fight, collapse, fragment, and rebuild without direct intervention.
 
-6. **Readable history**  
-   The user should be able to inspect the map, click nations, view population, resources, government, military strength, cities, doctrines, religions, trade routes, conflicts, and historical events.
+6. **Infinite procedural world**  
+   The map expands as needed. Terrain, biomes, resources, hazards, settlement sites, and political borders emerge over time.
 
-## How Nations Spawn
+7. **Readable simulation**  
+   The desktop view should communicate what is happening through map animation, labels, event notices, overlays, and automatically rotating information panels.
 
-Nations spawn when usage crosses configurable thresholds.
+8. **Long-term persistence**  
+   A world should be capable of running for months or years while preserving its nations, borders, institutions, conflicts, and historical record.
 
-Possible spawn inputs:
+## Activity as Simulation Fuel
 
-- New conversation thread
-- Active coding session
-- Token count threshold
-- Long-running project folder
-- AI provider activity
-- Local exported conversation
-- Browser or editor activity
-- Manual import of conversation logs
+ThreadNations may observe neutral activity signals from supported AI tools, editors, terminals, or local development sessions.
 
-A new nation should prefer unclaimed land. The map should find a viable spawn site based on terrain, water access, nearby resources, climate, and distance from existing borders.
+The system should avoid interpreting the subject matter of that activity.
 
-If no nearby generated region is suitable, the world expands outward and generates more land.
+Useful signals may include:
+
+- Session started
+- Session ended
+- Active session duration
+- Approximate token volume
+- Number of completed interactions
+- Code generation volume
+- Frequency of active sessions
+- Time since last activity
+- Provider or integration source
+- Long-term activity streaks
+
+These signals are converted into abstract simulation fuel.
+
+Possible outputs include:
+
+- World activity points
+- Nation-spawn pressure
+- Population growth pressure
+- Construction capacity
+- Research opportunities
+- Economic activity
+- Migration pressure
+- Event probability
+- Simulation speed bonuses
+- Recovery from stagnation
+
+The same activity signal must be capable of producing different outcomes in different nations because the simulation state, not the source content, determines the result.
+
+For example:
+
+```text
+1,000 activity units enter the world.
+
+Nation A has fertile land and labor shortages:
+  Agricultural production expands.
+
+Nation B has iron, coal, and dense cities:
+  Heavy industry expands.
+
+Nation C is isolated and politically unstable:
+  Migration and unrest increase.
+
+Nation D is wealthy and highly educated:
+  Research institutions expand.
+```
+
+The input is neutral. Existing conditions determine the outcome.
+
+## Privacy Boundary
+
+ThreadNations should not require the contents of conversations, prompts, files, or generated code in order to function.
+
+Integrations should prefer metadata and aggregate activity counters over raw content.
+
+The simulation should not need to know what the user discussed, wrote, researched, or generated. It only needs to know that qualifying activity occurred.
+
+Where possible:
+
+- Process activity locally
+- Store only aggregate metrics
+- Avoid storing prompts or responses
+- Avoid topic classification
+- Avoid embeddings of conversation content
+- Avoid transmitting user content to external services
+- Allow integrations to operate without reading project files
+
+## How Nations Emerge
+
+Nations emerge automatically when world conditions and accumulated activity pressure allow them to.
+
+Possible triggers include:
+
+- Sufficient unclaimed population
+- Settlement growth beyond local governance
+- Migration into a remote region
+- Collapse or fragmentation of an existing state
+- Independence movements
+- Colonial separation
+- Religious schism
+- Political revolution
+- Accumulated world activity reaching a spawn threshold
+
+New nations should usually arise from the simulation rather than appearing without context.
+
+A nation may begin as:
+
+- A frontier settlement
+- A city-state
+- A tribal federation
+- A breakaway province
+- A refugee state
+- A trading colony
+- A religious enclave
+- A military successor state
+- A union of smaller settlements
+
+When entirely new settlement is needed, the world generator should locate viable unclaimed land based on water, food, climate, resources, travel access, and distance from existing powers.
+
+If no suitable generated region exists, the map expands outward and creates additional land.
 
 ## Nation Identity
 
-Each nation generates its name, culture, starting traits, and core focus from the thread that created it.
+Nation identity is procedurally generated from simulation conditions.
 
-The core focus may include:
+A nation may develop around:
 
-- Import/export economy
-- Military industry
-- Scientific research
-- Farming and food production
-- Religious development
-- Cultural production
-- Bureaucracy and law
-- Technology and engineering
-- Medicine and public welfare
-- Isolationism
-- Expansionism
-- Naval trade
+- Local geography
+- Available resources
+- Founding population
+- Settlement structure
+- Climate
+- Trade position
+- Military threats
+- Religious traditions
+- Historic disasters
+- Political revolutions
+- Economic dependencies
+- Relations with neighboring states
+
+Possible national tendencies include:
+
+- Agricultural production
+- Maritime trade
+- Heavy industry
 - Resource extraction
+- Scientific research
+- Religious authority
+- Cultural production
+- Military expansion
+- Bureaucratic administration
+- Public welfare
+- Isolationism
+- Commercial finance
+- Environmental stewardship
+- Colonial expansion
 
-Example mappings:
+These tendencies are outcomes of the simulation. They are not assigned from the subject of an AI thread.
 
-| Thread Type | Possible Nation Result |
-| --- | --- |
-| Rust renderer project | Industrial engineering state |
-| Stardew Valley mod discussion | Farming kingdom |
-| Tax or benefits question | Legal bureaucracy republic |
-| Fantasy lore thread | Religious monarchy or culture state |
-| Game combat design | Militarized tactical nation |
-| AI research thread | University-led technocracy |
+Nation names, demonyms, languages, symbols, cultures, and institutions should be generated through deterministic procedural rules tied to world seed, region, ancestry, and history.
 
-Nation names should be generated from thread keywords, provider identity, project names, dominant topics, and procedural language rules.
+## World Activity Conversion
 
-## Activity to Simulation Conversion
+Activity should enter the world through a neutral allocation system.
 
-ThreadNations translates user activity into simulation pressure.
-
-### Tokens as Labor
-
-Tokens spent can generate economic activity.
-
-Example:
+One possible model:
 
 ```text
-1,000 tokens spent:
-  +100 labor units
-  +25 iron mined
-  +15 tools manufactured
-  +5 homes constructed
-  +1 local invention chance
+Observed activity
+    -> activity points
+    -> global world pressure
+    -> regional allocation
+    -> nation-specific opportunities
+    -> simulation outcomes
 ```
 
-### Thread Length as Civilization Age
+The allocation system may consider:
 
-Longer threads create older, more developed civilizations.
+- Population size
+- Current stability
+- Infrastructure
+- Education
+- Resource availability
+- Government efficiency
+- Trade access
+- War status
+- Recent disasters
+- Development level
+- Existing shortages
+
+Activity should not directly create specific goods.
+
+Instead of:
 
 ```text
-New thread:
-  Camps, huts, basic food gathering, early farming
-
-100k token thread:
-  Towns, roads, schools, organized government, workshops
-
-1m token mega-thread:
-  Cities, heavy industry, universities, rail, modern military, advanced doctrine
+1,000 tokens:
+  +25 iron
+  +5 houses
 ```
 
-### Topic Classification as National Direction
+Prefer:
 
-Content should influence development.
+```text
+1,000 activity units:
+  +development pressure
+  +economic opportunity
+  +construction potential
+  +research potential
+```
 
-| Topic | Simulation Output |
-| --- | --- |
-| Programming | Engineers, factories, tools, computers, research |
-| Game design | Culture, entertainment, happiness, doctrine variety |
-| Science | Universities, medicine, innovation, advanced resources |
-| Finance | Banks, trade routes, merchant fleets, imports and exports |
-| Law | Courts, bureaucracy, governance, crime control |
-| Survival | Food, water, defense, resilience |
-| Military design | Weapons industries, command structure, military doctrine |
-| Art | Culture, religion, luxury goods, tourism |
+Each nation then converts that potential according to its own circumstances.
 
-Local embeddings, keyword classification, or lightweight topic scoring can be used to classify activity.
+## Simulation Time
+
+ThreadNations should continue progressing independently of active AI usage.
+
+Activity may accelerate or energize the simulation, but inactivity should not freeze the world.
+
+Possible time layers:
+
+- Real-time visual updates
+- Fast internal economic ticks
+- Daily political and demographic ticks
+- Seasonal agricultural and climate ticks
+- Yearly historical and technological evaluation
+
+The simulation may slow during long periods of inactivity, but nations should continue to age, consume resources, reproduce, migrate, negotiate, and experience events.
 
 ## Resources
 
-The world contains procedurally placed natural resources. Nations discover, claim, mine, farm, refine, manufacture, trade, and fight over them.
-
-Resources should include raw materials, refined goods, military goods, industrial goods, food, water, drugs, alcohol, and high-technology outputs.
-
-Example resource categories:
+The world contains procedurally placed natural resources. Nations discover, claim, extract, refine, manufacture, trade, ration, and fight over them.
 
 ### Natural Materials
 
@@ -190,13 +320,13 @@ Example resource categories:
 - Fish
 - Dairy
 
-Nations should specialize in random crops and animals based on climate, geography, available water, cultural traits, and trade needs.
+Agricultural specialization should emerge from climate, terrain, water, domestication history, local demand, and trade opportunities.
 
 ### Industrial Goods
 
 - Tools
 - Automobiles
-- Airplanes
+- Aircraft
 - Electronics
 - Computers
 - Microprocessors
@@ -213,7 +343,7 @@ Nations should specialize in random crops and animals based on climate, geograph
 - Aircraft
 - Naval vessels
 
-Military goods are simulation resources only. The project should never include real-world construction instructions for weapons, explosives, or illegal materials.
+Military goods remain abstract simulation resources. ThreadNations should never include real-world construction instructions for weapons, explosives, or illegal materials.
 
 ### Social and Regulated Goods
 
@@ -223,11 +353,11 @@ Military goods are simulation resources only. The project should never include r
 - Medicine
 - Luxury goods
 
-Drug and alcohol systems should remain abstract and simulated. They can affect health, crime, production, culture, law, trade, and unrest.
+These systems remain abstract and may influence health, crime, production, culture, law, trade, and unrest.
 
 ## Economy
 
-Each nation has an economy shaped by population, resources, terrain, technology level, doctrine, culture, laws, and trade.
+Each nation has an economy shaped by population, geography, resources, infrastructure, technology, government, culture, laws, trade access, and historical conditions.
 
 Economic systems should support:
 
@@ -235,49 +365,54 @@ Economic systems should support:
 - Farming
 - Refining
 - Manufacturing
+- Domestic consumption
 - Import needs
 - Export surpluses
 - Trade routes
 - Labor shortages
-- Inflation-like scarcity pressure
+- Scarcity and inflation pressure
 - Black markets
 - Smuggling
-- Infrastructure growth
+- Infrastructure development
 - City specialization
 - Industrialization
+- Economic collapse
+- Recovery and reconstruction
 
-Nations should establish trade routes autonomously when they have compatible needs and surpluses.
+Nations establish trade routes autonomously when they have compatible needs, surpluses, diplomatic access, and viable transportation.
 
-Trade routes may be land, river, sea, air, or advanced high-speed routes depending on technology age.
+Routes may travel by land, river, sea, air, or advanced transport networks depending on geography and technological development.
 
 ## Population
 
-Every nation tracks citizens, military population, workforce, intelligence distribution, happiness, health, crime, migration, and settlement growth.
+Every nation tracks population through cohorts rather than requiring individually simulated citizens.
 
 Population systems should include:
 
-- Citizen population count
-- Military population count
-- Workforce count
+- Total population
+- Civilian population
+- Military population
+- Workforce
 - Births and deaths
 - Immigration
 - Emigration
-- Education levels
-- Varying citizen intelligence levels
-- Class or wealth pressure
+- Education
+- Skill distribution
+- Wealth and class pressure
 - Public health
-- Drug and alcohol use
 - Crime
+- Substance use
 - Religious participation
 - Political unrest
+- Urbanization
+- Displacement
+- Refugees
 
-The simulation does not need individual named citizens at MVP scale. Population cohorts are fine until the design needs more detail.
+Population behavior should respond to food, housing, safety, opportunity, law, culture, war, disease, climate, and migration routes.
 
 ## Settlements and Scale
 
-Nations form settlements based on population and geography.
-
-Settlement growth stages:
+Nations form and expand settlements according to population and geography.
 
 ```text
 Camp
@@ -288,7 +423,7 @@ Metropolis
 Mega-region
 ```
 
-Settlements should grow naturally around:
+Settlements should emerge around:
 
 - Fresh water
 - Food sources
@@ -299,14 +434,15 @@ Settlements should grow naturally around:
 - Defensive terrain
 - Religious sites
 - Industrial zones
+- Transportation hubs
 
-Nations expand borders as their population grows, their infrastructure improves, and their military or political strength allows them to claim land.
+Cities should develop distinct functions over time, such as ports, capitals, mining centers, university cities, military strongholds, manufacturing hubs, or religious centers.
 
 ## Government and Law
 
-Nations form their own governments over time.
+Nations form and transform their own governments.
 
-Possible government types:
+Possible government types include:
 
 - Tribal council
 - Monarchy
@@ -321,18 +457,29 @@ Possible government types:
 - Federal union
 - Failed state
 
-Governments should be influenced by thread focus, culture, resource pressure, war, inequality, religion, technology, and historical events.
+Government formation should be influenced by:
 
-Nations should create laws and doctrines autonomously.
+- Founding conditions
+- Population structure
+- Wealth distribution
+- Religion
+- Military power
+- Resource pressure
+- War
+- Technology
+- Education
+- Historic institutions
+- Revolutions
+- Foreign influence
 
-Example doctrines:
+Nations create laws and doctrines autonomously.
+
+Possible doctrines include:
 
 - Closed Borders
 - Open Borders
-- Dictatorship
 - Universal Healthcare
 - Universal Basic Income
-- Birth Control Ban
 - Military State
 - Religious Law
 - Free Trade
@@ -347,15 +494,16 @@ Example doctrines:
 - Legalized Alcohol
 - Prohibition
 
-Doctrines should have tradeoffs instead of being simple bonuses. A doctrine should create benefits, costs, risks, and cultural consequences.
+Doctrines should create benefits, costs, risks, and social consequences rather than simple bonuses.
 
 ## Religion and Culture
 
-Nations may establish religions, philosophies, myths, holidays, rituals, cultural movements, art styles, and ideological traditions.
+Nations may develop religions, philosophies, myths, holidays, rituals, artistic traditions, political ideologies, and cultural movements.
 
 Religion and culture may influence:
 
 - Happiness
+- Legitimacy
 - Law
 - Birth rates
 - War support
@@ -364,16 +512,15 @@ Religion and culture may influence:
 - Education
 - Crime
 - Trade compatibility
-- Doctrines
-- Government legitimacy
+- Government stability
 
-Religions should emerge procedurally from geography, disasters, founding topics, historic leaders, victories, collapses, and repeated national experiences.
+Religions and cultural traditions should emerge from geography, disasters, migrations, founding myths, historic leaders, victories, defeats, collapses, and repeated national experiences.
 
 ## Diplomacy
 
-Nations communicate with each other and build relationships autonomously.
+Nations communicate and build relationships autonomously.
 
-Diplomacy should include:
+Diplomatic systems should include:
 
 - Recognition
 - Alliances
@@ -388,31 +535,31 @@ Diplomacy should include:
 - Defensive blocs
 - Federations
 - Proxy conflicts
+- Tributary relationships
+- Peace settlements
 
-Nations should form alliances and conflicts based on need, ideology, resources, historical grievances, military threat, trade reliance, and cultural compatibility.
+Relationships should respond to ideology, resources, historical grievances, military threat, trade dependence, culture, geography, and alliance obligations.
 
 ## Military and Conflict
 
-Nations can build militaries based on population, industry, technology, resources, doctrine, geography, and perceived threats.
+Nations build militaries according to population, industry, technology, resources, doctrine, geography, logistics, and perceived threats.
 
 Military systems should include:
 
-- Military population count
+- Military population
 - Unit categories
 - Vehicle categories
 - Supply capacity
-- Training level
-- Doctrine
+- Training
 - Morale
-- Technology level
+- Technology
 - Defensive structures
-- Military strength score
+- Command quality
+- Military strength
 
-Military strength should be derived from current units, vehicles, weapons, logistics, technology, industry, leadership, and terrain advantages.
+War should emerge from simulation pressure.
 
-War should emerge from simulation pressure, not direct player control.
-
-Possible conflict causes:
+Possible causes include:
 
 - Border disputes
 - Resource scarcity
@@ -424,16 +571,14 @@ Possible conflict causes:
 - Migration pressure
 - Revenge
 - Alliance obligations
+- Internal collapse
+- Independence movements
 
-Battles resolve automatically using abstract simulation rules.
-
-The player watches history unfold.
+Battles resolve automatically through abstract simulation rules.
 
 ## Technology Progression
 
-Nations progress from the stone age to the nuclear and space age.
-
-Example ages:
+Nations progress through technological eras at different rates.
 
 ```text
 Stone Age
@@ -450,25 +595,26 @@ Space Age
 Post-Space Age
 ```
 
-Technology progression should depend on:
+Technological progress should depend on:
 
 - Research output
 - Education
 - Resources
 - Trade
-- War pressure
 - Stability
+- Institutions
+- Population density
 - Imported knowledge
-- Thread topic influence
-- AI usage intensity
+- War pressure
+- Economic surplus
 
-Nations can advance unevenly. A small high-research nation may have advanced computers but limited food security. A huge agrarian empire may have population power but weak industry.
+Development should remain uneven. A small research-focused state may lead in computing while struggling to feed itself. A large agrarian empire may possess enormous population power while remaining technologically limited.
 
 ## Natural Disasters and Geography
 
-Natural disasters should be based on geography, climate, terrain, and procedural world rules.
+Natural events should arise from geography, climate, terrain, and procedural world rules.
 
-Examples:
+Examples include:
 
 - Earthquakes
 - Floods
@@ -482,18 +628,17 @@ Examples:
 - Famine
 - Disease outbreaks
 
-Disasters should affect food, water, population, infrastructure, migration, faith, government legitimacy, and conflict risk.
+Disasters affect food, water, population, infrastructure, migration, religion, government legitimacy, and conflict risk.
 
 ## World Map
 
-The world map is ever expanding and has no fixed borders.
+The world map is procedurally generated, borderless, and capable of expanding indefinitely.
 
-Core map requirements:
+Core requirements include:
 
-- Procedurally generated terrain
-- Procedurally scattered resources
+- Procedural terrain
+- Procedural resources
 - Unclaimed land
-- Expanding nations
 - Dynamic borders
 - Roads
 - Trade routes
@@ -504,36 +649,44 @@ Core map requirements:
 - Conflict zones
 - Disaster zones
 - Religious and cultural centers
+- Migration paths
+- Expanding settlement regions
 
-Nations spawn in unclaimed land, attempt to grow their borders, and compete for strategic locations.
+Nations compete for strategic locations and respond to the world around them without direct user commands.
 
-The user should be able to view the map, inspect nations, see what nations are where, and understand why borders, wars, trade routes, and cities emerged.
+## Desktop Experience
 
-## User Experience
+ThreadNations runs in a persistent desktop window.
 
-The user is primarily an observer.
+The window should:
 
-The app should let the user:
+- Be resizable
+- Be movable between monitors
+- Remember its position and size
+- Continue simulating while unfocused
+- Support borderless and always-on-top modes
+- Scale cleanly across display resolutions
+- Remain readable at compact window sizes
+- Avoid demanding attention
 
-- View the world map
-- Zoom and pan
-- Click nations
-- Inspect cities, towns, and neighborhoods
-- View population counts
-- View military population counts
-- View military strength
-- View government type
-- View laws and doctrines
-- View religions
-- View resources
-- View imports and exports
-- View active trade routes
-- View alliances and wars
-- View disasters
-- View historical timeline events
-- View the thread or activity source that created a nation
+The map can be panned and zoomed for inspection without affecting the simulation.
 
-The dream version runs as a desktop overlay where little settlements, roads, ships, aircraft, conflicts, and borders appear over time.
+Information may be communicated through:
+
+- Automatically rotating nation panels
+- Map labels
+- Animated borders
+- Trade-route movement
+- Settlement growth
+- Conflict indicators
+- Disaster effects
+- Short event notices
+- Population and economy counters
+- A passive historical ticker
+- Map navigation and nation inspection
+- Periodic world summaries
+
+The user may reposition or configure the application window at the operating-system level, but there are no gameplay controls and no direct control over the world.
 
 ## Technical Architecture
 
@@ -544,13 +697,13 @@ Suggested layout:
 ```text
 threadnations/
 ├── crates/
-│   ├── app/                  # Desktop app entrypoint
-│   ├── renderer/             # Map rendering, overlay rendering, camera
-│   ├── simulation/           # Core autonomous world simulation
-│   ├── worldgen/             # Infinite map generation and resources
-│   ├── integrations/         # Codex, Claude, ChatGPT, browser, file imports
-│   ├── persistence/          # SQLite and world state saves
-│   ├── analysis/             # Topic classification and activity conversion
+│   ├── app/                  # Desktop application and window lifecycle
+│   ├── renderer/             # World rendering, camera, overlays, animation
+│   ├── simulation/           # Autonomous civilization simulation
+│   ├── worldgen/             # Infinite terrain, climate, and resources
+│   ├── activity/             # Neutral activity metrics and integrations
+│   ├── persistence/          # SQLite and world-state saves
+│   ├── presentation/         # Passive panels, event ticker, summaries
 │   └── common/               # Shared types, IDs, config, time
 ├── assets/
 ├── docs/
@@ -562,16 +715,19 @@ threadnations/
 
 Recommended Rust-friendly technologies:
 
-- `bevy` or another ECS-friendly structure for large simulation systems
-- `egui` for inspector panels and debug UI
-- `wgpu` for rendering if custom rendering is needed
+- `bevy` or another ECS-oriented architecture for simulation systems
+- `egui` for internal tools, diagnostics, and optional configuration
+- `wgpu` for custom rendering
+- `winit` for desktop window behavior
 - `sqlite` for persistent world state
-- `serde` for save/load formats
-- Deterministic RNG for reproducible world generation
+- `serde` for save and configuration formats
+- Deterministic random generation for reproducible worlds
+
+Debug and development interfaces may accept input, but the released companion experience should remain free of gameplay controls.
 
 ## Simulation Modules
 
-The simulation should be modular from day one.
+The simulation should be modular from the beginning.
 
 ```text
 simulation/
@@ -593,13 +749,13 @@ simulation/
 └── history
 ```
 
-Systems should communicate through explicit events and state transitions instead of hidden side effects.
+Systems should communicate through explicit events and state transitions rather than hidden side effects.
 
 ## Persistence
 
-ThreadNations is meant to run for months or years.
+ThreadNations is intended to run for months or years.
 
-Persistence requirements:
+Persistence requirements include:
 
 - Save world seed
 - Save generated chunks
@@ -607,34 +763,37 @@ Persistence requirements:
 - Save populations
 - Save settlements
 - Save resources
-- Save governments, laws, doctrines, religions
-- Save trade routes, alliances, wars, and history
-- Save activity sources and thread-to-nation links
-- Support migration between save versions when practical
+- Save governments, laws, doctrines, and religions
+- Save trade routes, alliances, wars, and historical events
+- Save aggregate activity totals
+- Save simulation time and scheduling state
+- Support save-version migration when practical
+
+Raw prompts, conversation contents, and generated code should not be required for persistence.
 
 ## MVP Scope
 
-A practical first playable version should focus on the smallest version that proves the fantasy.
+The first playable version should prove the autonomous desktop-companion concept.
 
 MVP goals:
 
-1. Load activity input from mock data or imported thread summaries.
-2. Spawn nations from thread records.
-3. Generate an expanding tile or chunk-based world map.
-4. Place resources procedurally.
-5. Give each nation a name, focus, population, resources, government seed, and territory.
-6. Simulate growth over time from usage activity.
-7. Allow nations to expand borders into unclaimed land.
-8. Allow simple trade route creation between compatible nations.
-9. Allow simple conflict creation over borders or resources.
-10. Render the map and allow nation inspection.
-11. Persist and reload the world.
+1. Run in a persistent resizable desktop window.
+2. Generate a deterministic chunk-based world map.
+3. Spawn procedurally generated nations without using conversation subject matter.
+4. Simulate population, food, basic resources, settlements, and borders.
+5. Convert mock or locally observed activity metrics into neutral world activity points.
+6. Allow nations to use those points according to their own conditions.
+7. Create simple autonomous trade relationships.
+8. Create simple autonomous conflicts over borders and resources.
+9. Display events through passive labels, notices, and rotating panels.
+10. Continue simulating while the window is unfocused.
+11. Persist and reload the complete world.
 
-Post-MVP systems can deepen religion, doctrine, migration, crime, disasters, military units, and technology ages.
+Post-MVP work can deepen governments, religion, migration, crime, disasters, military organization, industry, diplomacy, and technology.
 
 ## Long-Term Vision
 
-After months of real use, the world might look like this:
+After months of continuous use, a world might contain:
 
 ```text
 World Age: 127 years
@@ -644,12 +803,30 @@ Active Wars: 7
 Known Religions: 19
 Doctrines: 284
 Trade Routes: 3,417
-Largest Empire: Codexia
-Oldest Surviving Nation: The Rustward Compact
-Most Advanced Nation: Claudean Observatory
+Largest Empire: The Veyran Union
+Oldest Surviving Nation: The Orrow Compact
+Most Advanced Nation: The Telic Republic
 Most Unstable Region: The Glass Coast
 ```
 
-Some nations survive for years. Some collapse after one burst of activity. Some become strange old empires because the user spent six months obsessively coding one project.
+Some nations may survive for centuries. Others may collapse shortly after forming. A minor settlement may become a continental empire because of geography, trade, political stability, and luck. A wealthy industrial state may disintegrate after war, famine, or internal division.
 
-ThreadNations is not just a game. It is a persistent civilization ecosystem generated from the user's thinking activity, where every AI conversation can become part of world history.
+None of those outcomes are chosen by the user, and none are inferred from what the user discussed with an AI.
+
+ThreadNations is a persistent autonomous civilization ecosystem that turns background activity into motion while allowing the simulated world to decide its own history.
+
+## Run
+
+Install stable Rust, then run:
+
+```powershell
+cargo run --release -p threadnations-app
+cargo test --workspace
+cargo clippy --workspace -- -D warnings
+```
+
+First launch creates `data/config.toml` and `data/threadnations.sqlite` in the repository root. The default calendar advances one tick per minute, or one simulated year every twelve minutes; change `calendar_step_ms` in `data/config.toml` to tune that cadence. The normal build has no gameplay controls: drag the map to pan, use the mouse wheel to zoom, and click a nation to inspect its population cohorts, economy, territory, and relations. Capitals display a small set of representative profession markers—such as farmers, teachers, engineers, soldiers, scientists, and historians—rather than every citizen. These controls never affect the autonomous simulation.
+
+`data/activity-inbox.jsonl` is optional. It accepts only numeric, metadata-only activity records; the application never reads prompts, responses, project names, file names, source code, titles, or topic text. See [activity format](docs/activity-format.md).
+
+First launch asks whether to import existing local Codex sessions. Accepting imports every discoverable session as neutral metadata-derived activity, then immediately advances the autonomous world. Conversation content remains unread; see [activity format](docs/activity-format.md) for exact boundaries.

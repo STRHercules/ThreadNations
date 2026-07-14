@@ -1,6 +1,8 @@
-//! Shared primitives for the ThreadNations Rust engine.
+//! Shared primitives for the `ThreadNations` Rust engine.
 
 use std::fmt::{Display, Formatter};
+
+use serde::{Deserialize, Serialize};
 
 /// Size of one square map chunk in tiles.
 pub const CHUNK_SIZE: i32 = 16;
@@ -34,7 +36,19 @@ impl std::error::Error for EngineError {}
 macro_rules! stable_id {
     ($name:ident) => {
         #[doc = concat!("Stable ID for ", stringify!($name), ".")]
-        #[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
+        #[derive(
+            Clone,
+            Copy,
+            Debug,
+            Default,
+            Deserialize,
+            Eq,
+            Hash,
+            Ord,
+            PartialEq,
+            PartialOrd,
+            Serialize,
+        )]
         pub struct $name(pub u64);
 
         impl $name {
@@ -65,7 +79,7 @@ stable_id!(DoctrineId);
 stable_id!(MapChunkId);
 
 /// Monotonic stable ID allocator for a world save.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct IdAllocator {
     next: u64,
 }
@@ -92,7 +106,9 @@ impl Default for IdAllocator {
 }
 
 /// Chunk-space coordinate.
-#[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(
+    Clone, Copy, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
+)]
 pub struct ChunkCoord {
     /// Chunk x coordinate.
     pub x: i32,
@@ -109,7 +125,9 @@ impl ChunkCoord {
 }
 
 /// Tile-space coordinate.
-#[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(
+    Clone, Copy, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
+)]
 pub struct TileCoord {
     /// Tile x coordinate.
     pub x: i32,
@@ -145,7 +163,7 @@ impl TileCoord {
     }
 }
 
-/// Lightweight deterministic RNG based on SplitMix64.
+/// Lightweight deterministic RNG based on `SplitMix64`.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct DeterministicRng {
     state: u64,
@@ -178,7 +196,9 @@ impl DeterministicRng {
 }
 
 /// Monotonic world simulation tick.
-#[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(
+    Clone, Copy, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
+)]
 pub struct WorldTick(pub u64);
 
 impl WorldTick {

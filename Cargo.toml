@@ -4,6 +4,7 @@ members = [
     "crates/analysis",
     "crates/worldgen",
     "crates/simulation",
+    "crates/persistence",
     "crates/app",
 ]
 resolver = "2"

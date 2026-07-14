@@ -1,12 +1,13 @@
-//! Deterministic infinite world generation for ThreadNations.
+//! Deterministic infinite world generation for `ThreadNations`.
 
+use serde::{Deserialize, Serialize};
 use threadnations_common::{
     ChunkCoord, DeterministicRng, EngineError, EngineResult, ResourceDepositId, TileCoord,
     CHUNK_SIZE,
 };
 
 /// Terrain class for a map tile.
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub enum TerrainType {
     /// Open water or coast water.
     Water,
@@ -25,7 +26,7 @@ pub enum TerrainType {
 }
 
 /// Climate and biome layer.
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub enum Biome {
     /// Temperate mixed climate.
     Temperate,
@@ -40,7 +41,7 @@ pub enum Biome {
 }
 
 /// Resource category matching the README and AGENTS guidance.
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub enum ResourceCategory {
     /// Natural materials.
     NaturalMaterial,
@@ -59,7 +60,7 @@ pub enum ResourceCategory {
 }
 
 /// Concrete resources in the first simulation pass.
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum ResourceKind {
     /// Wood.
     Wood,
@@ -135,7 +136,7 @@ impl ResourceKind {
 }
 
 /// A natural resource deposit attached to a tile.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct ResourceDeposit {
     /// Stable resource deposit ID.
     pub id: ResourceDepositId,
@@ -148,7 +149,7 @@ pub struct ResourceDeposit {
 }
 
 /// A generated tile.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct Tile {
     /// World tile coordinate.
     pub coord: TileCoord,
@@ -179,12 +180,14 @@ impl Tile {
     /// Returns true when a tile contains the requested resource.
     #[must_use]
     pub fn has_resource(&self, resource: ResourceKind) -> bool {
-        self.resources.iter().any(|deposit| deposit.kind == resource)
+        self.resources
+            .iter()
+            .any(|deposit| deposit.kind == resource)
     }
 }
 
 /// A square chunk of generated terrain.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct MapChunk {
     /// Chunk coordinate.
     pub coord: ChunkCoord,
@@ -239,7 +242,15 @@ impl WorldGenerator {
     }
 
     /// Finds a viable unclaimed spawn site, expanding chunk rings as needed.
-    pub fn find_spawn_site<F>(&self, mut is_claimed: F, max_radius_chunks: i32) -> EngineResult<Tile>
+    ///
+    /// # Errors
+    ///
+    /// Returns [`EngineError::NoViableSpawnSite`] when no viable tile exists within the limit.
+    pub fn find_spawn_site<F>(
+        &self,
+        mut is_claimed: F,
+        max_radius_chunks: i32,
+    ) -> EngineResult<Tile>
     where
         F: FnMut(TileCoord) -> bool,
     {
@@ -316,7 +327,9 @@ fn resources_for_tile(
             maybe_push(&mut resources, coord, ResourceKind::Crystal, 12, rng);
         }
         TerrainType::Desert => maybe_push(&mut resources, coord, ResourceKind::Sand, 95, rng),
-        TerrainType::Wetlands => maybe_push(&mut resources, coord, ResourceKind::FoodCrops, 35, rng),
+        TerrainType::Wetlands => {
+            maybe_push(&mut resources, coord, ResourceKind::FoodCrops, 35, rng);
+        }
         TerrainType::Plains => maybe_push(&mut resources, coord, ResourceKind::Livestock, 30, rng),
         TerrainType::Water => {}
     }
@@ -340,7 +353,7 @@ fn maybe_push(
             id: ResourceDepositId::new(hash_resource_id(coord, kind)),
             kind,
             tile: coord,
-            abundance: (rng.range_u64(100).max(1)) as u8,
+            abundance: u8::try_from(rng.range_u64(100).max(1)).unwrap_or(u8::MAX),
         });
     }
 }
@@ -355,7 +368,7 @@ fn chunk_ring(radius: i32) -> Vec<ChunkCoord> {
         coords.push(ChunkCoord::new(x, -radius));
         coords.push(ChunkCoord::new(x, radius));
     }
-    for y in (-radius + 1)..=(radius - 1) {
+    for y in (-radius + 1)..radius {
         coords.push(ChunkCoord::new(-radius, y));
         coords.push(ChunkCoord::new(radius, y));
     }
@@ -363,8 +376,8 @@ fn chunk_ring(radius: i32) -> Vec<ChunkCoord> {
 }
 
 fn hash_coord(seed: u64, coord: TileCoord) -> u64 {
-    let x = coord.x as i64 as u64;
-    let y = coord.y as i64 as u64;
+    let x = i64::from(coord.x).cast_unsigned();
+    let y = i64::from(coord.y).cast_unsigned();
     seed ^ x.wrapping_mul(0xA24B_AED4_963E_E407) ^ y.wrapping_mul(0x9FB2_1C65_1E98_DF25)
 }
 

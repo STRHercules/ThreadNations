@@ -4,7 +4,7 @@
 
 - Created Rust workspace with `common`, `analysis`, `worldgen`, `simulation`, and `app` crates.
 - Added stable ID newtypes, deterministic RNG, tile/chunk coordinates, world ticks, and shared errors.
-- Added activity source models and deterministic keyword-based activity classification.
+- The original content-classification prototype was removed; activity now accepts numeric metadata only.
 - Added usage-pressure conversion from tokens, duration, code output, and thread age.
 - Added deterministic world generation with chunks, terrain, biomes, resources, and viable spawn-site selection.
 - Added core autonomous simulation state with nations, population cohorts, resource inventory, settlements, history events, and border growth.

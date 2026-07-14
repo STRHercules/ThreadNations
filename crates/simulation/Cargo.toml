@@ -9,6 +9,7 @@ repository.workspace = true
 threadnations-analysis = { path = "../analysis" }
 threadnations-common = { path = "../common" }
 threadnations-worldgen = { path = "../worldgen" }
+serde = { version = "1", features = ["derive"] }
 
 [lints]
 workspace = true
