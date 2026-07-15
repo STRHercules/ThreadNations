@@ -19,6 +19,8 @@ pub struct WindowState {
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct HistoricalImportState {
     pub answered: bool,
+    #[serde(default)]
+    pub imported: bool,
     pub imported_records: u64,
 }
 

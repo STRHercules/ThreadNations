@@ -11,8 +11,20 @@ use threadnations_common::{
 pub enum TerrainType {
     /// Open water or coast water.
     Water,
+    /// Large bodies of open water with abundant fish.
+    Ocean,
+    /// Smaller inland bodies of water with moderate fish.
+    Lake,
+    /// Long freshwater channels that join the larger water system.
+    River,
+    /// Sandy shoreline between land and ocean or lake water.
+    Beach,
     /// Flat grasslands suitable for early settlement.
     Plains,
+    /// Dark-grass open country.
+    Grassland,
+    /// Light-grass open country with sparse trees.
+    Prairie,
     /// Forested land rich in wood.
     Forest,
     /// Hills with common ores.
@@ -86,6 +98,8 @@ pub enum ResourceKind {
     FoodCrops,
     /// Livestock.
     Livestock,
+    /// Fish caught from ocean, lake, and river tiles.
+    Fish,
     /// Abstract ammunition stockpile.
     Ammunition,
     /// Abstract firearms industry variable.
@@ -121,7 +135,7 @@ impl ResourceKind {
             | Self::Crystal
             | Self::FreshWater
             | Self::FertileSoil => ResourceCategory::NaturalMaterial,
-            Self::FoodCrops | Self::Livestock => ResourceCategory::FoodAndAgriculture,
+            Self::FoodCrops | Self::Livestock | Self::Fish => ResourceCategory::FoodAndAgriculture,
             Self::Ammunition | Self::Firearms | Self::Explosives => {
                 ResourceCategory::AbstractMilitaryGood
             }
@@ -167,7 +181,13 @@ impl Tile {
     pub fn is_viable_spawn(&self) -> bool {
         if matches!(
             self.terrain,
-            TerrainType::Water | TerrainType::Mountains | TerrainType::Desert
+            TerrainType::Water
+                | TerrainType::Ocean
+                | TerrainType::Lake
+                | TerrainType::River
+                | TerrainType::Beach
+                | TerrainType::Mountains
+                | TerrainType::Desert
         ) {
             return false;
         }
@@ -229,8 +249,7 @@ impl WorldGenerator {
     #[must_use]
     pub fn generate_tile(&self, coord: TileCoord) -> Tile {
         let mut rng = DeterministicRng::new(hash_coord(self.seed, coord));
-        let terrain = terrain_from_roll(rng.range_u64(100), coord);
-        let biome = biome_from_roll(rng.range_u64(100), coord);
+        let (terrain, biome) = self.terrain_at(coord);
         let resources = resources_for_tile(coord, terrain, biome, &mut rng);
 
         Tile {
@@ -239,6 +258,12 @@ impl WorldGenerator {
             biome,
             resources,
         }
+    }
+
+    /// Returns terrain layers without allocating resource deposits.
+    #[must_use]
+    pub fn terrain_at(&self, coord: TileCoord) -> (TerrainType, Biome) {
+        (terrain_for(self.seed, coord), biome_for(self.seed, coord))
     }
 
     /// Finds a viable unclaimed spawn site, expanding chunk rings as needed.
@@ -269,23 +294,62 @@ impl WorldGenerator {
     }
 }
 
-fn terrain_from_roll(roll: u64, coord: TileCoord) -> TerrainType {
-    if coord.x == 0 || coord.y == 0 || (coord.x + coord.y).rem_euclid(29) == 0 {
-        return TerrainType::Wetlands;
+fn terrain_for(seed: u64, coord: TileCoord) -> TerrainType {
+    match terrain_water(seed, coord) {
+        TerrainType::Ocean | TerrainType::Lake => return terrain_water(seed, coord),
+        _ => {}
+    }
+    if is_river(seed, coord) {
+        return TerrainType::River;
+    }
+    if coord.cardinal_neighbors().iter().any(|neighbor| {
+        matches!(
+            terrain_water(seed, *neighbor),
+            TerrainType::Ocean | TerrainType::Lake
+        )
+    }) {
+        return TerrainType::Beach;
     }
 
-    match roll {
-        0..=10 => TerrainType::Water,
-        11..=38 => TerrainType::Plains,
-        39..=58 => TerrainType::Forest,
-        59..=73 => TerrainType::Hills,
-        74..=84 => TerrainType::Mountains,
-        85..=92 => TerrainType::Desert,
-        _ => TerrainType::Wetlands,
+    match layered_noise(seed ^ 0x71E2_A1A5, coord, 48) {
+        0..=24 => TerrainType::Desert,
+        25..=42 => TerrainType::Forest,
+        43..=57 => TerrainType::Hills,
+        58..=67 => TerrainType::Mountains,
+        68..=83 => TerrainType::Grassland,
+        _ => TerrainType::Prairie,
     }
 }
 
-fn biome_from_roll(roll: u64, coord: TileCoord) -> Biome {
+fn terrain_water(seed: u64, coord: TileCoord) -> TerrainType {
+    match layered_noise(seed ^ 0xB0D1_E500, coord, 96) {
+        0..=15 => TerrainType::Ocean,
+        16..=22 => TerrainType::Lake,
+        _ => TerrainType::Plains,
+    }
+}
+
+fn is_river(seed: u64, coord: TileCoord) -> bool {
+    let horizontal = i64::try_from(layered_noise(
+        seed ^ 0xC0FF_EE11,
+        TileCoord::new(coord.x, 0),
+        96,
+    ))
+    .unwrap_or_default()
+        - 50;
+    let vertical = i64::try_from(layered_noise(
+        seed ^ 0xA11C_E551,
+        TileCoord::new(0, coord.y),
+        96,
+    ))
+    .unwrap_or_default()
+        - 50;
+    i64::from(coord.y).saturating_sub(horizontal).unsigned_abs() <= 1
+        || i64::from(coord.x).saturating_sub(vertical).unsigned_abs() <= 1
+}
+
+fn biome_for(seed: u64, coord: TileCoord) -> Biome {
+    let roll = smooth_noise(seed ^ 0xB10B_E500, coord, 128);
     let latitude_bias = coord.y.unsigned_abs() % 100;
     match roll.saturating_add(u64::from(latitude_bias / 5)) {
         0..=24 => Biome::Temperate,
@@ -294,6 +358,26 @@ fn biome_from_roll(roll: u64, coord: TileCoord) -> Biome {
         62..=82 => Biome::Arid,
         _ => Biome::Tundra,
     }
+}
+
+fn smooth_noise(seed: u64, coord: TileCoord, scale: i32) -> u64 {
+    let x = coord.x.div_euclid(scale);
+    let y = coord.y.div_euclid(scale);
+    let local_x = u64::try_from(coord.x.rem_euclid(scale)).unwrap_or_default();
+    let local_y = u64::try_from(coord.y.rem_euclid(scale)).unwrap_or_default();
+    let scale = u64::try_from(scale).unwrap_or(1);
+    let value = |x, y| hash_coord(seed, TileCoord::new(x, y)) % 101;
+    let top = value(x, y).saturating_mul(scale - local_x) + value(x + 1, y).saturating_mul(local_x);
+    let bottom = value(x, y + 1).saturating_mul(scale - local_x)
+        + value(x + 1, y + 1).saturating_mul(local_x);
+    (top.saturating_mul(scale - local_y) + bottom.saturating_mul(local_y))
+        / scale.saturating_mul(scale)
+}
+
+fn layered_noise(seed: u64, coord: TileCoord, scale: i32) -> u64 {
+    let broad = smooth_noise(seed, coord, scale);
+    let detail = smooth_noise(seed ^ 0x6A09_E667_F3BC_C909, coord, (scale / 3).max(1));
+    broad.saturating_mul(3).saturating_add(detail) / 4
 }
 
 fn resources_for_tile(
@@ -306,13 +390,24 @@ fn resources_for_tile(
 
     if matches!(
         terrain,
-        TerrainType::Wetlands | TerrainType::Plains | TerrainType::Forest
+        TerrainType::Wetlands
+            | TerrainType::Plains
+            | TerrainType::Grassland
+            | TerrainType::Prairie
+            | TerrainType::Forest
     ) {
         maybe_push(&mut resources, coord, ResourceKind::FreshWater, 65, rng);
         maybe_push(&mut resources, coord, ResourceKind::FertileSoil, 55, rng);
     }
 
     match terrain {
+        TerrainType::Ocean => push_resource(&mut resources, coord, ResourceKind::Fish, 90),
+        TerrainType::Lake => push_resource(&mut resources, coord, ResourceKind::Fish, 55),
+        TerrainType::River => {
+            push_resource(&mut resources, coord, ResourceKind::FreshWater, 100);
+            push_resource(&mut resources, coord, ResourceKind::Fish, 20);
+        }
+        TerrainType::Beach => maybe_push(&mut resources, coord, ResourceKind::Sand, 85, rng),
         TerrainType::Forest => maybe_push(&mut resources, coord, ResourceKind::Wood, 90, rng),
         TerrainType::Hills => {
             maybe_push(&mut resources, coord, ResourceKind::Stone, 70, rng);
@@ -330,7 +425,9 @@ fn resources_for_tile(
         TerrainType::Wetlands => {
             maybe_push(&mut resources, coord, ResourceKind::FoodCrops, 35, rng);
         }
-        TerrainType::Plains => maybe_push(&mut resources, coord, ResourceKind::Livestock, 30, rng),
+        TerrainType::Plains | TerrainType::Grassland | TerrainType::Prairie => {
+            maybe_push(&mut resources, coord, ResourceKind::Livestock, 30, rng);
+        }
         TerrainType::Water => {}
     }
 
@@ -339,6 +436,20 @@ fn resources_for_tile(
     }
 
     resources
+}
+
+fn push_resource(
+    resources: &mut Vec<ResourceDeposit>,
+    coord: TileCoord,
+    kind: ResourceKind,
+    abundance: u8,
+) {
+    resources.push(ResourceDeposit {
+        id: ResourceDepositId::new(hash_resource_id(coord, kind)),
+        kind,
+        tile: coord,
+        abundance,
+    });
 }
 
 fn maybe_push(
@@ -399,6 +510,17 @@ mod tests {
     }
 
     #[test]
+    fn terrain_only_lookup_matches_generated_tile() {
+        let generator = WorldGenerator::new(42);
+        let coord = TileCoord::new(17, -31);
+
+        assert_eq!(generator.terrain_at(coord), {
+            let tile = generator.generate_tile(coord);
+            (tile.terrain, tile.biome)
+        });
+    }
+
+    #[test]
     fn spawn_site_is_viable_and_unclaimed() {
         let generator = WorldGenerator::new(7);
         let spawn = generator
@@ -407,5 +529,20 @@ mod tests {
 
         assert!(spawn.is_viable_spawn());
         assert_ne!(spawn.coord, TileCoord::new(0, 0));
+    }
+
+    #[test]
+    fn water_types_supply_expected_fish_abundance() {
+        let coord = TileCoord::new(4, -9);
+        let mut rng = DeterministicRng::new(12);
+        let ocean = resources_for_tile(coord, TerrainType::Ocean, Biome::Temperate, &mut rng);
+        let river = resources_for_tile(coord, TerrainType::River, Biome::Temperate, &mut rng);
+
+        assert!(ocean
+            .iter()
+            .any(|resource| resource.kind == ResourceKind::Fish && resource.abundance == 90));
+        assert!(river
+            .iter()
+            .any(|resource| resource.kind == ResourceKind::Fish && resource.abundance == 20));
     }
 }
