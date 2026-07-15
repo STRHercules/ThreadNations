@@ -1,5 +1,10 @@
 //! Deterministic, input-free civilization simulation.
 
+use std::{
+    cmp::Reverse,
+    collections::{BTreeMap, BinaryHeap},
+};
+
 use serde::{Deserialize, Serialize};
 use threadnations_common::{
     BuildingId, ChunkCoord, ConflictId, HistoryEventId, IdAllocator, NationId, PathId,
@@ -20,6 +25,27 @@ const STARTING_REGIONS: [ChunkCoord; 6] = [
     ChunkCoord::new(0, 8),
     ChunkCoord::new(-8, -8),
 ];
+
+#[derive(Clone, Copy, Debug, Default)]
+struct LocalConditions {
+    fertility: u32,
+    minerals: u32,
+    forest: u32,
+    water: u32,
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+struct BuildingCounts {
+    houses: u32,
+    farms: u32,
+    workshops: u32,
+    markets: u32,
+    schools: u32,
+    barracks: u32,
+    clinics: u32,
+    temples: u32,
+    sources: u32,
+}
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub enum Government {
@@ -77,6 +103,14 @@ pub enum BuildingKind {
     House,
     Farm,
     WheatField,
+    Workshop,
+    Market,
+    School,
+    Barracks,
+    Clinic,
+    Temple,
+    Mine,
+    Lumberyard,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -221,6 +255,56 @@ pub struct JobAssignment {
     pub workers: u64,
 }
 
+/// Consumable goods produced by jobs and drained by households, industry, and public services.
+#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+pub struct ResourceStores {
+    pub wood: u32,
+    pub stone: u32,
+    pub ore: u32,
+    pub tools: u32,
+    pub goods: u32,
+    pub livestock: u32,
+    pub fish: u32,
+    pub medicine: u32,
+}
+
+/// Per-nation ledger. Values are refreshed each economy tick, so the UI reports causes as
+/// well as the current stockpiles.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct Economy {
+    pub housing: u64,
+    pub treasury: u32,
+    pub tax_rate: u8,
+    pub education: u8,
+    pub health: u8,
+    pub crime: u8,
+    pub food_produced: u32,
+    pub food_consumed: u32,
+    pub materials_produced: u32,
+    pub materials_consumed: u32,
+    pub taxes_collected: u32,
+    pub resources: ResourceStores,
+}
+
+impl Default for Economy {
+    fn default() -> Self {
+        Self {
+            housing: 0,
+            treasury: 0,
+            tax_rate: 12,
+            education: 10,
+            health: 55,
+            crime: 12,
+            food_produced: 0,
+            food_consumed: 0,
+            materials_produced: 0,
+            materials_consumed: 0,
+            taxes_collected: 0,
+            resources: ResourceStores::default(),
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub enum WorkerTarget {
     Tree(TileCoord),
@@ -294,6 +378,8 @@ pub struct Nation {
     pub military: u32,
     pub research: u32,
     pub opportunity: u32,
+    #[serde(default)]
+    pub economy: Economy,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -608,7 +694,9 @@ impl World {
 
     /// Rebuilds structures and roads after loading a world saved with an older layout policy.
     pub fn refresh_settlement_layout(&mut self) {
+        self.paths.clear();
         self.sync_buildings();
+        self.sync_trade_paths();
     }
 
     /// Adds a bounded number of independently located nations from imported activity volume.
@@ -635,6 +723,7 @@ impl World {
         }
     }
 
+    #[allow(clippy::too_many_lines)]
     fn sync_buildings(&mut self) {
         self.refresh_legacy_farm_layout();
         let territories: Vec<(NationId, Vec<TileCoord>)> = self
@@ -648,7 +737,7 @@ impl World {
             })
         });
         self.paths.retain(|path| path.trade_route.is_some());
-        let nations: Vec<(NationId, TileCoord, u64)> = self
+        let nations: Vec<(NationId, TileCoord, u64, LocalConditions)> = self
             .nations
             .iter()
             .filter_map(|nation| {
@@ -656,12 +745,19 @@ impl World {
                     .settlements
                     .iter()
                     .find(|settlement| settlement.id == nation.capital)
-                    .map(|capital| (nation.id, capital.location, nation.population))
+                    .map(|capital| {
+                        (
+                            nation.id,
+                            capital.location,
+                            nation.population,
+                            self.local_conditions(nation),
+                        )
+                    })
             })
             .collect();
-        for (nation, capital, population) in nations {
+        for (nation, capital, population, conditions) in nations {
             self.place_keep(nation, self.wall_gate(nation).unwrap_or(capital));
-            let houses = usize::try_from((population / 450).clamp(3, 24)).unwrap_or(24);
+            let houses = usize::try_from((population / 600).clamp(3, 48)).unwrap_or(48);
             self.trim_buildings(nation, BuildingKind::House, houses);
             while self.count_buildings(nation, BuildingKind::House) < houses {
                 if !self.ensure_building(nation, BuildingKind::House, capital, None, 16) {
@@ -721,6 +817,54 @@ impl World {
                 let farm_id = self.add_building(nation, BuildingKind::Farm, farm, None);
                 self.add_building(nation, BuildingKind::WheatField, field, Some(farm_id));
             }
+            self.sync_building_count(
+                nation,
+                BuildingKind::Workshop,
+                usize::try_from((population / 3_000).clamp(1, 8)).unwrap_or(8),
+                capital,
+            );
+            self.sync_building_count(
+                nation,
+                BuildingKind::Market,
+                usize::try_from((population / 2_500).clamp(1, 6)).unwrap_or(6),
+                capital,
+            );
+            self.sync_building_count(
+                nation,
+                BuildingKind::School,
+                usize::try_from(population / 6_000).unwrap_or(4).min(4),
+                capital,
+            );
+            self.sync_building_count(
+                nation,
+                BuildingKind::Barracks,
+                usize::try_from(population / 5_000).unwrap_or(3).min(3),
+                capital,
+            );
+            self.sync_building_count(
+                nation,
+                BuildingKind::Clinic,
+                usize::try_from(population / 8_000).unwrap_or(2).min(2),
+                capital,
+            );
+            self.sync_building_count(
+                nation,
+                BuildingKind::Temple,
+                usize::try_from(population / 7_000).unwrap_or(2).min(2),
+                capital,
+            );
+            self.sync_building_count(
+                nation,
+                BuildingKind::Mine,
+                usize::from(conditions.minerals >= 8),
+                capital,
+            );
+            self.sync_building_count(
+                nation,
+                BuildingKind::Lumberyard,
+                usize::from(conditions.forest >= 8),
+                capital,
+            );
             self.connect_buildings(nation);
         }
         let farms: Vec<BuildingId> = self
@@ -751,6 +895,21 @@ impl World {
             .count()
     }
 
+    fn building_counts(&self, nation: NationId) -> BuildingCounts {
+        let count = |kind| u32::try_from(self.count_buildings(nation, kind)).unwrap_or(u32::MAX);
+        BuildingCounts {
+            houses: count(BuildingKind::House),
+            farms: count(BuildingKind::Farm),
+            workshops: count(BuildingKind::Workshop),
+            markets: count(BuildingKind::Market),
+            schools: count(BuildingKind::School),
+            barracks: count(BuildingKind::Barracks),
+            clinics: count(BuildingKind::Clinic),
+            temples: count(BuildingKind::Temple),
+            sources: count(BuildingKind::Mine).saturating_add(count(BuildingKind::Lumberyard)),
+        }
+    }
+
     fn trim_buildings(&mut self, nation: NationId, kind: BuildingKind, desired: usize) {
         let mut excess = self.count_buildings(nation, kind).saturating_sub(desired);
         if excess == 0 {
@@ -764,6 +923,21 @@ impl World {
                 true
             }
         });
+    }
+
+    fn sync_building_count(
+        &mut self,
+        nation: NationId,
+        kind: BuildingKind,
+        desired: usize,
+        capital: TileCoord,
+    ) {
+        self.trim_buildings(nation, kind, desired);
+        while self.count_buildings(nation, kind) < desired {
+            if !self.ensure_building(nation, kind, capital, None, 20) {
+                break;
+            }
+        }
     }
 
     fn ensure_building(
@@ -926,7 +1100,7 @@ impl World {
                 trade_route: None,
                 from,
                 to: endpoint,
-                tiles: natural_path(from, endpoint),
+                tiles: self.path_between(from, endpoint),
             });
             network.push(endpoint);
             pending.swap_remove(pending_index);
@@ -1303,6 +1477,94 @@ impl World {
             && (!self.is_wall_tile(coord) || self.wall_gate(nation) == Some(coord))
     }
 
+    /// Routes roads around natural obstacles. Water remains traversable so the resulting path
+    /// becomes a bridge/path tile instead of leaving an impossible gap in the road network.
+    fn path_between(&self, from: TileCoord, to: TileCoord) -> Vec<TileCoord> {
+        let distance = manhattan(from, to).max(1);
+        // ponytail: bounded A* keeps long trade routes finite; widen this only if worldgen
+        // introduces obstacle belts wider than 384 tiles.
+        let margin = (distance / 3).clamp(96, 192);
+        for margin in [margin, margin.saturating_mul(2)] {
+            if let Some(path) = self.path_between_with_margin(from, to, margin) {
+                return path;
+            }
+        }
+        Vec::new()
+    }
+
+    fn path_between_with_margin(
+        &self,
+        from: TileCoord,
+        to: TileCoord,
+        margin: i32,
+    ) -> Option<Vec<TileCoord>> {
+        let min_x = from.x.min(to.x) - margin;
+        let max_x = from.x.max(to.x) + margin;
+        let min_y = from.y.min(to.y) - margin;
+        let max_y = from.y.max(to.y) + margin;
+        let mut frontier = BinaryHeap::new();
+        let mut cost = BTreeMap::new();
+        let mut previous = BTreeMap::new();
+        frontier.push((Reverse(0_u32), Reverse(0_u32), Reverse(from)));
+        cost.insert(from, 0_u32);
+
+        while let Some((_, Reverse(current_cost), Reverse(current))) = frontier.pop() {
+            if current == to {
+                let mut path = Vec::new();
+                let mut cursor = to;
+                while let Some(parent) = previous.get(&cursor).copied() {
+                    if cursor != to {
+                        path.push(cursor);
+                    }
+                    cursor = parent;
+                }
+                path.reverse();
+                return Some(path);
+            }
+            if cost.get(&current).copied() != Some(current_cost) {
+                continue;
+            }
+            for next in current.cardinal_neighbors() {
+                if next.x < min_x || next.x > max_x || next.y < min_y || next.y > max_y {
+                    continue;
+                }
+                let Some(step_cost) = self.path_tile_cost(next, from, to) else {
+                    continue;
+                };
+                let next_cost = current_cost.saturating_add(step_cost);
+                if cost.get(&next).is_some_and(|known| *known <= next_cost) {
+                    continue;
+                }
+                cost.insert(next, next_cost);
+                previous.insert(next, current);
+                frontier.push((
+                    Reverse(next_cost.saturating_add(
+                        u32::try_from(manhattan(next, to)).unwrap_or(u32::MAX) * 10,
+                    )),
+                    Reverse(next_cost),
+                    Reverse(next),
+                ));
+            }
+        }
+        None
+    }
+
+    fn path_tile_cost(&self, coord: TileCoord, from: TileCoord, to: TileCoord) -> Option<u32> {
+        if coord != from
+            && coord != to
+            && (self.has_tree_at(coord)
+                || self.has_rock_at(coord)
+                || self.is_wall_tile(coord)
+                || self
+                    .buildings
+                    .iter()
+                    .any(|building| building.location == coord))
+        {
+            return None;
+        }
+        Some(if is_water(&self.tile(coord)) { 16 } else { 10 })
+    }
+
     fn is_within_walls(&self, nation: NationId, coord: TileCoord) -> bool {
         self.nation(nation)
             .and_then(wall_bounds)
@@ -1399,6 +1661,7 @@ impl World {
             research: 0,
             opportunity: 0,
             jobs: Vec::new(),
+            economy: Economy::default(),
         });
         self.rebalance_cohorts();
         self.event(
@@ -1543,36 +1806,108 @@ impl World {
             .collect()
     }
 
+    #[allow(clippy::too_many_lines)]
     fn run_economy(&mut self, allocations: &[u32]) {
-        let conditions: Vec<(u32, u32)> = self
+        let conditions: Vec<LocalConditions> = self
             .nations
             .iter()
             .map(|nation| self.local_conditions(nation))
             .collect();
+        let capacities: Vec<BuildingCounts> = self
+            .nations
+            .iter()
+            .map(|nation| self.building_counts(nation.id))
+            .collect();
         let mut events = Vec::new();
         for (index, nation) in self.nations.iter_mut().enumerate() {
             let opportunity = allocations.get(index).copied().unwrap_or_default();
-            let (fertility, minerals) = conditions[index];
+            let conditions = conditions[index];
+            let BuildingCounts {
+                houses,
+                farms,
+                workshops,
+                markets,
+                schools,
+                barracks,
+                clinics,
+                temples,
+                sources,
+            } = capacities[index];
             nation.opportunity = nation.opportunity.saturating_add(opportunity);
-            let farms = u32::try_from(
-                self.buildings
-                    .iter()
-                    .filter(|building| {
-                        building.nation == nation.id && building.kind == BuildingKind::Farm
-                    })
-                    .count(),
-            )
-            .unwrap_or(u32::MAX);
+            let workers = |role| job_workers(&nation.jobs, role);
+            let farmer = workers(JobRole::Farmer);
+            let rancher = workers(JobRole::Rancher);
+            let fisher = workers(JobRole::Fisher);
+            let lumberjack = workers(JobRole::Lumberjack);
+            let stonemason = workers(JobRole::Stonemason);
+            let hunter = workers(JobRole::Hunter);
+            let blacksmith = workers(JobRole::Blacksmith);
+            let carpenter = workers(JobRole::Carpenter);
+            let mason = workers(JobRole::Mason);
+            let weaver = workers(JobRole::Weaver);
+            let potter = workers(JobRole::Potter);
+            let tanner = workers(JobRole::Tanner);
+            let herbalist = workers(JobRole::Herbalist);
+            let merchant = workers(JobRole::Merchant);
+            let innkeeper = workers(JobRole::Innkeeper);
+            let builder = workers(JobRole::Builder);
+            let teamster = workers(JobRole::Teamster);
+            let healer = workers(JobRole::Healer);
+            let scribe = workers(JobRole::Scribe);
+            let priest = workers(JobRole::Priest);
+            let guard = workers(JobRole::Guard);
+            let soldier = workers(JobRole::Soldier);
+
+            let resources = &mut nation.economy.resources;
+            resources.wood = resources
+                .wood
+                .saturating_add(lumberjack / 3 + sources.saturating_mul(conditions.forest / 12));
+            resources.stone = resources
+                .stone
+                .saturating_add(stonemason / 3 + sources.saturating_mul(conditions.minerals / 14));
+            resources.ore = resources
+                .ore
+                .saturating_add(stonemason / 5 + sources.saturating_mul(conditions.minerals / 10));
+            resources.livestock = resources.livestock.saturating_add(rancher / 4);
+            resources.fish = resources
+                .fish
+                .saturating_add(fisher / 3 + conditions.water.saturating_mul(fisher / 80));
+            resources.medicine = resources
+                .medicine
+                .saturating_add(herbalist / 3 + healer / 8);
+
+            let crafted = (blacksmith / 5 + carpenter / 6 + mason / 6 + workshops * 4)
+                .min((resources.wood + resources.stone + resources.ore) / 2);
+            let timber_used = crafted.min(resources.wood);
+            resources.wood -= timber_used;
+            let mineral_used = crafted.saturating_sub(timber_used);
+            let stone_used = mineral_used.min(resources.stone);
+            resources.stone -= stone_used;
+            resources.ore = resources
+                .ore
+                .saturating_sub(mineral_used.saturating_sub(stone_used));
+            resources.tools = resources.tools.saturating_add(blacksmith / 7 + crafted / 4);
+            resources.goods = resources
+                .goods
+                .saturating_add(weaver / 4 + potter / 4 + tanner / 4 + workshops * 2);
+
             let produce_food = farms
-                .saturating_mul(18)
-                .saturating_add(fertility.saturating_mul(4))
+                .saturating_mul(14)
+                .saturating_add(farmer / 7)
+                .saturating_add(rancher / 5)
+                .saturating_add(fisher / 4)
+                .saturating_add(hunter / 9)
+                .saturating_add(conditions.fertility.saturating_mul(2))
                 .saturating_add(opportunity / 8);
             let consume = u32::try_from(nation.population / 350)
                 .unwrap_or(u32::MAX)
+                .saturating_add(soldier / 18)
                 .saturating_add(12);
             let food_cap = u32::try_from(nation.population / 2)
                 .unwrap_or(u32::MAX)
                 .saturating_add(300);
+            nation.economy.food_produced = produce_food;
+            nation.economy.food_consumed = consume;
             nation.food = nation.food.saturating_add(produce_food).min(food_cap);
             if nation.food < consume {
                 let loss = (nation.population / 220).max(2);
@@ -1587,28 +1922,69 @@ impl World {
                 }
             } else {
                 nation.food -= consume;
-                nation.population = nation.population.saturating_add(
-                    (nation.population / 4_000).max(1) + u64::from(opportunity / 30),
-                );
+                nation.economy.housing = u64::from(houses).saturating_mul(750);
+                if nation.population < nation.economy.housing {
+                    nation.population = nation.population.saturating_add(
+                        (nation.population / 4_000).max(1) + u64::from(opportunity / 30),
+                    );
+                } else {
+                    nation.stability = nation.stability.saturating_sub(2);
+                }
                 nation.stability = nation.stability.saturating_add(1).min(100);
             }
-            let produced_materials = minerals.saturating_mul(2).saturating_add(opportunity / 12);
+            let produced_materials = crafted
+                .saturating_add(resources.tools / 20)
+                .saturating_add(opportunity / 12);
+            let materials_consumed = builder / 5 + nation.materials / 120 + markets;
             let material_cap = u32::try_from(nation.population.saturating_mul(2))
                 .unwrap_or(u32::MAX)
                 .saturating_add(500);
             nation.materials = nation
                 .materials
                 .saturating_add(produced_materials)
+                .saturating_sub(materials_consumed)
                 .min(material_cap);
+            nation.economy.materials_produced = produced_materials;
+            nation.economy.materials_consumed = materials_consumed;
+            let income = merchant / 3
+                + innkeeper / 4
+                + teamster / 5
+                + resources.goods / 24
+                + markets * 3
+                + opportunity / 6;
+            let taxes = income.saturating_mul(u32::from(nation.economy.tax_rate)) / 100;
+            nation.economy.taxes_collected = taxes;
             nation.wealth = nation
                 .wealth
-                .saturating_add((produced_materials / 4).max(1))
+                .saturating_add(income.saturating_sub(taxes))
                 .min(material_cap);
+            nation.economy.treasury = nation.economy.treasury.saturating_add(taxes);
+            let services = schools * 3 + clinics * 3 + barracks * 2 + temples + guard / 10;
+            nation.economy.treasury = nation.economy.treasury.saturating_sub(services);
+            nation.economy.education = nation
+                .economy
+                .education
+                .saturating_add(u8::try_from(schools + scribe / 80).unwrap_or(u8::MAX))
+                .min(100);
+            nation.economy.health = nation
+                .economy
+                .health
+                .saturating_add(u8::try_from(clinics + healer / 90).unwrap_or(u8::MAX))
+                .min(100);
+            nation.economy.crime = nation
+                .economy
+                .crime
+                .saturating_sub(u8::try_from(guard / 70 + markets).unwrap_or(u8::MAX));
+            nation.stability = nation
+                .stability
+                .saturating_add(u8::try_from(priest / 90 + temples).unwrap_or(u8::MAX))
+                .min(100);
             nation.research = nation.research.saturating_add(
-                opportunity / 10
-                    + u32::try_from(nation.educated_workforce / 1_000).unwrap_or(u32::MAX),
+                opportunity / 10 + u32::from(nation.economy.education) / 8 + scribe / 12,
             );
-            let desired_military = u32::try_from(nation.population / 40).unwrap_or(u32::MAX);
+            let desired_military = u32::try_from(nation.population / 40)
+                .unwrap_or(u32::MAX)
+                .min(barracks.saturating_add(1).saturating_mul(80));
             if nation.military < desired_military && nation.food > consume.saturating_mul(3) {
                 nation.military = nation.military.saturating_add(1);
             }
@@ -1618,9 +1994,9 @@ impl World {
                 .find(|settlement| settlement.id == nation.capital)
             {
                 capital.population = nation.population;
-                capital.infrastructure = capital
-                    .infrastructure
-                    .saturating_add(u16::try_from(opportunity / 25).unwrap_or(u16::MAX));
+                capital.infrastructure = capital.infrastructure.saturating_add(
+                    u16::try_from(builder / 18 + opportunity / 25).unwrap_or(u16::MAX),
+                );
                 let next = stage_for(capital.population, capital.infrastructure);
                 if next != capital.stage {
                     capital.stage = next;
@@ -1637,22 +2013,24 @@ impl World {
         }
     }
 
-    fn local_conditions(&self, nation: &Nation) -> (u32, u32) {
+    fn local_conditions(&self, nation: &Nation) -> LocalConditions {
         nation
             .territory
             .iter()
-            .fold((0, 0), |(fertility, minerals), coord| {
+            .fold(LocalConditions::default(), |mut conditions, coord| {
                 let tile = self.tile(*coord);
-                let fertile = u32::from(
+                conditions.fertility += u32::from(
                     tile.has_resource(ResourceKind::FertileSoil)
                         || tile.has_resource(ResourceKind::FreshWater),
                 );
-                let metal = u32::from(
+                conditions.minerals += u32::from(
                     tile.has_resource(ResourceKind::Iron)
                         || tile.has_resource(ResourceKind::Coal)
                         || matches!(tile.terrain, TerrainType::Hills | TerrainType::Mountains),
                 );
-                (fertility + fertile, minerals + metal)
+                conditions.forest += u32::from(matches!(tile.terrain, TerrainType::Forest));
+                conditions.water += u32::from(is_water(&tile));
+                conditions
             })
     }
 
@@ -1728,21 +2106,25 @@ impl World {
         {
             return;
         }
-        let Some(from) = self.nation(route.from).and_then(|nation| {
-            nation
-                .settlements
-                .iter()
-                .find(|settlement| settlement.id == nation.capital)
-                .map(|settlement| settlement.location)
+        let Some(from) = self.wall_gate(route.from).or_else(|| {
+            self.nation(route.from).and_then(|nation| {
+                nation
+                    .settlements
+                    .iter()
+                    .find(|settlement| settlement.id == nation.capital)
+                    .map(|settlement| settlement.location)
+            })
         }) else {
             return;
         };
-        let Some(to) = self.nation(route.to).and_then(|nation| {
-            nation
-                .settlements
-                .iter()
-                .find(|settlement| settlement.id == nation.capital)
-                .map(|settlement| settlement.location)
+        let Some(to) = self.wall_gate(route.to).or_else(|| {
+            self.nation(route.to).and_then(|nation| {
+                nation
+                    .settlements
+                    .iter()
+                    .find(|settlement| settlement.id == nation.capital)
+                    .map(|settlement| settlement.location)
+            })
         }) else {
             return;
         };
@@ -1752,7 +2134,7 @@ impl World {
             trade_route: Some(route.id),
             from,
             to,
-            tiles: natural_path(from, to),
+            tiles: self.path_between(from, to),
         });
     }
 
@@ -1970,6 +2352,13 @@ fn job_assignments(workforce: u64) -> Vec<JobAssignment> {
         .collect()
 }
 
+fn job_workers(jobs: &[JobAssignment], role: JobRole) -> u32 {
+    jobs.iter()
+        .find(|job| job.role == role)
+        .and_then(|job| u32::try_from(job.workers).ok())
+        .unwrap_or_default()
+}
+
 fn feature_roll(coord: TileCoord) -> u64 {
     let mut value = i64::from(coord.x)
         .cast_unsigned()
@@ -2034,37 +2423,6 @@ fn step_toward(
         .filter(|coord| walkable(*coord))
         .min_by_key(|coord| manhattan(*coord, target))
         .unwrap_or(from)
-}
-
-#[allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
-fn natural_path(from: TileCoord, to: TileCoord) -> Vec<TileCoord> {
-    let dx = to.x - from.x;
-    let dy = to.y - from.y;
-    let distance = dx.abs().max(dy.abs()).max(1);
-    let bend_limit = (distance / 6).clamp(2, 28);
-    let bend = i32::try_from(feature_roll(from) % u64::try_from(bend_limit * 2 + 1).unwrap_or(1))
-        .unwrap_or_default()
-        - bend_limit;
-    let control = TileCoord::new(
-        from.x + dx / 2 - dy.signum() * bend,
-        from.y + dy / 2 + dx.signum() * bend,
-    );
-    let mut tiles = Vec::new();
-    for step in 1..distance {
-        let progress = step as f32 / distance as f32;
-        let inverse = 1.0 - progress;
-        let x = inverse * inverse * from.x as f32
-            + 2.0 * inverse * progress * control.x as f32
-            + progress * progress * to.x as f32;
-        let y = inverse * inverse * from.y as f32
-            + 2.0 * inverse * progress * control.y as f32
-            + progress * progress * to.y as f32;
-        let coord = TileCoord::new(x.round() as i32, y.round() as i32);
-        if tiles.last().copied() != Some(coord) {
-            tiles.push(coord);
-        }
-    }
-    tiles
 }
 
 fn is_claimable_land(tile: &Tile) -> bool {
@@ -2418,6 +2776,38 @@ mod tests {
     }
 
     #[test]
+    fn paths_avoid_tree_and_rock_tiles_but_allow_water_tiles() {
+        let mut world = World::new_demo(12, 1);
+        world.refresh_settlement_layout();
+
+        assert!(world.paths.iter().any(|path| !path.tiles.is_empty()));
+        assert!(world
+            .paths
+            .iter()
+            .flat_map(|path| &path.tiles)
+            .all(|coord| { !world.has_tree_at(*coord) && !world.has_rock_at(*coord) }));
+        let water = (-96..=96)
+            .flat_map(|x| (-96..=96).map(move |y| TileCoord::new(x, y)))
+            .find(|coord| is_water(&world.tile(*coord)))
+            .expect("world generation should include water");
+        assert_eq!(world.path_tile_cost(water, water, water), Some(16));
+    }
+
+    #[test]
+    fn jobs_feed_the_economy_ledger_and_public_services() {
+        let mut world = World::new_demo(12, 1);
+        world.advance(0);
+        let economy = &world.nations[0].economy;
+
+        assert!(economy.food_produced > 0);
+        assert!(economy.materials_produced > 0);
+        assert!(economy.taxes_collected > 0);
+        assert!(economy.housing > 0);
+        assert!(economy.resources.goods > 0);
+        assert!(economy.resources.medicine > 0);
+    }
+
+    #[test]
     fn trade_routes_establish_permanent_paths() {
         let mut world = World::new_demo(12, 2);
         world.nations[0].food = 1_000;
@@ -2425,10 +2815,12 @@ mod tests {
         world.evaluate_trade();
 
         let route = world.trade_routes[0].id;
-        assert!(world
+        let path = world
             .paths
             .iter()
-            .any(|path| path.trade_route == Some(route) && !path.tiles.is_empty()));
+            .find(|path| path.trade_route == Some(route))
+            .expect("trade route should create a path");
+        assert!(!path.tiles.is_empty(), "{path:?}");
         world.trade_routes.clear();
         world.sync_buildings();
         assert!(world

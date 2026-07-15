@@ -21,11 +21,26 @@ use runtime::{random_world_seed, world_database_path, Config, INITIAL_NATIONS};
 
 const SNAPSHOT_PATH: &str = ".tmp/godot-world.json";
 const REQUEST_PATH: &str = ".tmp/godot-view-request.json";
+const COMMAND_PATH: &str = ".tmp/godot-command.json";
+const COMMAND_RESULT_PATH: &str = ".tmp/godot-command-result.json";
 
 #[derive(Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 enum Request {
     View { center: TileCoord, radius: i32 },
+}
+
+#[derive(Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+enum Command {
+    ResetWorld,
+    Backup { path: String },
+    Restore { path: String },
+}
+
+#[derive(Serialize)]
+struct CommandResult {
+    message: String,
 }
 
 #[derive(Serialize)]
@@ -34,6 +49,7 @@ struct WorldView {
     tick: u64,
     year: u32,
     activity_total: u64,
+    trade_routes: usize,
     center: TileCoord,
     tiles: Vec<TileView>,
     nations: Vec<NationView>,
@@ -43,6 +59,7 @@ struct WorldView {
     wildlife: Vec<WildlifeView>,
     conflicts: Vec<ConflictView>,
     history: Vec<HistoryView>,
+    minimap_tiles: Vec<MinimapTileView>,
 }
 
 #[derive(Serialize)]
@@ -63,14 +80,31 @@ struct NationView {
     government: String,
     ruler: String,
     capital: TileCoord,
+    capital_name: String,
+    capital_stage: String,
     population: u64,
+    civilians: u64,
+    workforce: u64,
+    educated_workforce: u64,
     military: u32,
     food: u32,
     materials: u32,
     wealth: u32,
     stability: u8,
     research: u32,
+    opportunity: u32,
     territory: usize,
+    settlements: usize,
+    tendency: String,
+    status: String,
+    jobs: Vec<JobView>,
+    relations: Vec<String>,
+}
+
+#[derive(Serialize)]
+struct JobView {
+    role: String,
+    workers: u64,
 }
 
 #[derive(Serialize)]
@@ -115,10 +149,17 @@ struct HistoryView {
     summary: String,
 }
 
+#[derive(Serialize)]
+struct MinimapTileView {
+    x: i32,
+    y: i32,
+    owner: u64,
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut config = Config::load().map_err(std::io::Error::other)?;
     let database = world_database_path();
-    let (mut world, mut activity_offset, historical_import) =
+    let (mut world, mut activity_offset, mut historical_import) =
         load_or_create(&mut config, &database)?;
     prepare_world(&mut world);
 
@@ -141,6 +182,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         if last_save.elapsed() >= Duration::from_secs(config.autosave_seconds.max(5)) {
             persist(&database, &world, activity_offset, &historical_import)?;
             last_save = Instant::now();
+        }
+        if let Some(command) = read_command() {
+            let message = execute_command(
+                command,
+                &mut world,
+                &mut config,
+                &database,
+                &mut activity_offset,
+                &mut historical_import,
+            )
+            .unwrap_or_else(|error| format!("Command failed: {error}"));
+            write_command_result(&message)?;
+            write_snapshot(&world, view_center, view_radius)?;
+            last_snapshot = Instant::now();
         }
         if last_snapshot.elapsed() >= Duration::from_millis(250) {
             if let Some(Request::View { center, radius }) = read_view_request() {
@@ -275,6 +330,60 @@ fn read_view_request() -> Option<Request> {
     serde_json::from_str(&fs::read_to_string(REQUEST_PATH).ok()?).ok()
 }
 
+fn read_command() -> Option<Command> {
+    let command = serde_json::from_str(&fs::read_to_string(COMMAND_PATH).ok()?).ok();
+    let _ = fs::remove_file(COMMAND_PATH);
+    command
+}
+
+fn write_command_result(message: &str) -> Result<(), Box<dyn std::error::Error>> {
+    fs::write(
+        COMMAND_RESULT_PATH,
+        serde_json::to_vec(&CommandResult {
+            message: message.into(),
+        })?,
+    )?;
+    Ok(())
+}
+
+fn execute_command(
+    command: Command,
+    world: &mut World,
+    config: &mut Config,
+    database: &Path,
+    activity_offset: &mut u64,
+    historical_import: &mut HistoricalImportState,
+) -> Result<String, Box<dyn std::error::Error>> {
+    match command {
+        Command::ResetWorld => {
+            config.world_seed = random_world_seed();
+            config.save().map_err(std::io::Error::other)?;
+            *world = World::new_demo(config.world_seed, INITIAL_NATIONS);
+            *activity_offset = 0;
+            *historical_import = HistoricalImportState::default();
+            prepare_world(world);
+            persist(database, world, *activity_offset, historical_import)?;
+            Ok("World reset with a new seed.".into())
+        }
+        Command::Backup { path } => {
+            persist(database, world, *activity_offset, historical_import)?;
+            fs::copy(database, path)?;
+            Ok("World backup saved.".into())
+        }
+        Command::Restore { path } => {
+            let saved = load(Path::new(&path))?.ok_or("Backup did not contain a world.")?;
+            *world = saved.world;
+            *activity_offset = saved.activity_offset;
+            *historical_import = saved.historical_import;
+            config.world_seed = world.seed;
+            config.save().map_err(std::io::Error::other)?;
+            prepare_world(world);
+            persist(database, world, *activity_offset, historical_import)?;
+            Ok("World restored.".into())
+        }
+    }
+}
+
 fn write_snapshot(
     world: &World,
     center: TileCoord,
@@ -312,9 +421,14 @@ fn world_view(world: &World, center: TileCoord, radius: i32) -> WorldView {
         tick: world.tick.0,
         year: world.year,
         activity_total: world.activity_total,
+        trade_routes: world.trade_routes.len(),
         center,
         tiles: tile_views(world, &owners, &walls, center, radius),
-        nations: world.nations.iter().filter_map(nation_view).collect(),
+        nations: world
+            .nations
+            .iter()
+            .filter_map(|nation| nation_view(world, nation))
+            .collect(),
         buildings: world
             .buildings
             .iter()
@@ -372,6 +486,17 @@ fn world_view(world: &World, center: TileCoord, radius: i32) -> WorldView {
             .map(|event| HistoryView {
                 year: event.tick.0.try_into().unwrap_or(u32::MAX),
                 summary: event.summary.clone(),
+            })
+            .collect(),
+        minimap_tiles: world
+            .nations
+            .iter()
+            .flat_map(|nation| {
+                nation.territory.iter().map(move |tile| MinimapTileView {
+                    x: tile.x,
+                    y: tile.y,
+                    owner: nation.id.get(),
+                })
             })
             .collect(),
     }
@@ -497,7 +622,7 @@ fn feature_roll(coord: TileCoord) -> u64 {
     value ^ (value >> 31)
 }
 
-fn nation_view(nation: &Nation) -> Option<NationView> {
+fn nation_view(world: &World, nation: &Nation) -> Option<NationView> {
     let capital = nation
         .settlements
         .iter()
@@ -508,15 +633,119 @@ fn nation_view(nation: &Nation) -> Option<NationView> {
         government: format!("{:?}", nation.government),
         ruler: format!("{} {}", nation.government.lord_title(), nation.lord_name),
         capital: capital.location,
+        capital_name: capital.name.clone(),
+        capital_stage: format!("{:?}", capital.stage),
         population: nation.population,
+        civilians: nation.civilians,
+        workforce: nation.workforce,
+        educated_workforce: nation.educated_workforce,
         military: nation.military,
         food: nation.food,
         materials: nation.materials,
         wealth: nation.wealth,
         stability: nation.stability,
         research: nation.research,
+        opportunity: nation.opportunity,
         territory: nation.territory.len(),
+        settlements: nation.settlements.len(),
+        tendency: nation_tendency(world, nation).into(),
+        status: nation_status(world, nation),
+        jobs: nation
+            .jobs
+            .iter()
+            .map(|job| JobView {
+                role: job.role.name().into(),
+                workers: job.workers,
+            })
+            .collect(),
+        relations: nation_relations(world, nation.id),
     })
+}
+
+fn nation_relations(world: &World, nation_id: NationId) -> Vec<String> {
+    let mut lines = Vec::new();
+    for route in &world.trade_routes {
+        let other = if route.from == nation_id {
+            route.to
+        } else if route.to == nation_id {
+            route.from
+        } else {
+            continue;
+        };
+        if let Some(nation) = world.nation(other) {
+            lines.push(format!("Trade: {} ({})", capital_name(nation), nation.name));
+        }
+    }
+    for conflict in &world.conflicts {
+        let other = if conflict.attacker == nation_id {
+            conflict.defender
+        } else if conflict.defender == nation_id {
+            conflict.attacker
+        } else {
+            continue;
+        };
+        if let Some(nation) = world.nation(other) {
+            lines.push(format!(
+                "Conflict: {} ({})",
+                capital_name(nation),
+                nation.name
+            ));
+        }
+    }
+    if lines.is_empty() {
+        lines.push("No external city relations.".into());
+    }
+    lines
+}
+
+fn capital_name(nation: &Nation) -> &str {
+    nation
+        .settlements
+        .iter()
+        .find(|settlement| settlement.id == nation.capital)
+        .map_or("Unknown capital", |settlement| settlement.name.as_str())
+}
+
+fn nation_tendency(world: &World, nation: &Nation) -> &'static str {
+    let (fertility, minerals) =
+        nation
+            .territory
+            .iter()
+            .fold((0, 0), |(fertility, minerals), coord| {
+                let tile = world.tile(*coord);
+                (
+                    fertility + u32::from(tile.is_viable_spawn()),
+                    minerals
+                        + u32::from(matches!(
+                            tile.terrain,
+                            threadnations_worldgen::TerrainType::Hills
+                                | threadnations_worldgen::TerrainType::Mountains
+                        )),
+                )
+            });
+    match fertility.cmp(&minerals) {
+        std::cmp::Ordering::Greater => "food security",
+        std::cmp::Ordering::Less => "material extraction",
+        std::cmp::Ordering::Equal => "urban development",
+    }
+}
+
+fn nation_status(world: &World, nation: &Nation) -> String {
+    if world
+        .conflicts
+        .iter()
+        .any(|conflict| conflict.attacker == nation.id || conflict.defender == nation.id)
+    {
+        "in conflict".into()
+    } else if world
+        .trade_routes
+        .iter()
+        .any(|route| route.from == nation.id || route.to == nation.id)
+    {
+        "trading".into()
+    } else {
+        "independent".into()
+    }
 }
 
 #[cfg(test)]

@@ -827,29 +827,22 @@ cargo test --workspace
 cargo clippy --workspace -- -D warnings
 ```
 
-### Godot viewer (in progress)
+### Desktop client
 
-The Godot project lives at the repository root and uses the existing Rust simulation and SQLite save as its authority. The normal launch is one command:
-
-```powershell
-.\scripts\run-godot.ps1
-```
-
-Use `.\scripts\run-godot.ps1 -Editor` to open the project in the Godot editor, or `-Release` to run a release-mode Rust bridge. The script starts a fresh local bridge and replaces any earlier bridge; it stays alive after Godot exits so the simulation keeps advancing. To run the two processes manually:
+The Bevy desktop client is the active and supported client. It renders a GPU-backed 2D map and keeps only a 5×5 window of map chunks alive around the camera; simulation, world generation, and SQLite persistence remain outside Bevy.
 
 ```powershell
-cargo run -p threadnations-app --bin godot_bridge
-& 'C:\Godot\Godot_v4.7.1-stable_win64.exe' --editor project.godot
+cargo run --release -p threadnations-app
 ```
 
-The bridge writes local map snapshots under `.tmp/` and reads the Godot viewer's requested map center from the same folder; it does not open a network port. Do not run the legacy eframe app and the Godot bridge against the same save at once: both are autonomous simulation hosts during this transition. The current Godot slice provides terrain/sprite rendering, borders/walls, buildings, workers, wildlife, trade paths, conflicts, pan/zoom, nation selection, and nation/history inspection; reset, backup, restore, and historical-import controls remain in the eframe app for now.
+The older eframe client remains available during the visual-parity migration with `cargo run -p threadnations-app --bin threadnations-app`. The repository also contains an experimental Godot bridge and project for reference, but neither is part of the supported runtime path. Do not launch either legacy client against the same SQLite world as the Bevy client.
 
-First launch chooses a new random world seed and stores `config.toml` plus `threadnations.sqlite` in `%LOCALAPPDATA%\ThreadNations`. New worlds begin with one nation and later powers emerge from autonomous growth. The default calendar advances one tick per minute, or one simulated year every twelve minutes; change `calendar_step_ms` in that config file to tune that cadence. The normal build has no gameplay controls: drag the map to pan, use the mouse wheel to zoom, click a nation to inspect it, or use the collapsible **Nations** menu to focus it. The right panel has Nation and History tabs; each nation has a persistent named ruler whose title reflects its government. Capitals display a small set of representative profession markers—such as farmers, teachers, engineers, soldiers, scientists, and historians—rather than every citizen. These controls never affect the autonomous simulation.
+First launch chooses a new random world seed and stores `config.toml` plus `threadnations.sqlite` in `%LOCALAPPDATA%\ThreadNations`. New worlds begin with one nation and later powers emerge from autonomous growth. The default calendar advances one tick per minute, or one simulated year every twelve minutes; change `calendar_step_ms` in that config file to tune that cadence. The Bevy client has middle-mouse panning, wheel zoom, a resizable Nations inspector, and camera focus from the nation list. These controls never affect the autonomous simulation.
 
-The map renderer uses the bundled Miniworld sprites at native 16px grid scale. Buildings, permanent roads, specialist workers, renewable tree stumps and rocks, and animated land/water wildlife are saved world state; the renderer only visualizes them. Nations persist a complete medieval job roster, while visible lumberjacks, stonemasons, and hunters gather their matching world resources. Land animals are scattered across bare grass, while fish populate rivers, lakes, and ocean tiles; both use their directional sprite-sheet rows rather than cycling unrelated frames. Idle workers wander on clear tiles within their nation. Each nation receives a stable coloured building palette, starting with huts before progressing to houses. Farms use the dedicated Farm sprites, retain an adjacent wheat field, and are kept clear of the settlement core. Construction is limited to bare grass tiles within a nation's territory. Rocks are scarce on grassland and concentrate in beach and desert terrain. Roads are rebuilt as a shared branch network, and the supplied wall sprites trace the exposed perimeter of every nation. Each keep occupies the wall gate and serves as the settlement entrance. Use **Borders** to show high-contrast colored territory outlines. Persistent local roads and trade corridors are drawn on the minimap, while capital markers remain above them and remain within its frame. The History tab condenses repeated border growth into one summary per nation.
+The Bevy map currently draws terrain, nation ownership, roads, and buildings as GPU sprites. It is deliberately a renderer migration first: Miniworld sprite atlases, worker/wildlife animation, borders, minimap, history, backups, and imports remain in the legacy client until they are ported. Buildings, permanent roads, specialist workers, renewable tree stumps and rocks, and animated land/water wildlife remain saved world state; the renderer only visualizes them. Nations persist a complete medieval job roster, and every role contributes to a persisted economy ledger: food, raw stores, craft goods, material production and maintenance, taxes, treasury, housing, education, health, crime, research, and military supply. Farms, workshops, markets, schools, barracks, clinics, temples, mines, and lumberyards appear autonomously as population and local resource sources support them. Roads are rebuilt as a shared branch network using obstacle-aware routing: they never occupy tree or rock tiles, and water crossings are rendered as bridge/path tiles.
 
-Use **Home** to return the camera to the opening view. **Options** can reset to a new seed, back up the current SQLite world through the Windows file picker, or restore a selected backup.
+Use the legacy eframe client for reset, backup, restore, and historical-import controls until those world-management actions are ported to Bevy.
 
-`data/activity-inbox.jsonl` is optional. It accepts only numeric, metadata-only activity records; the application never reads prompts, responses, project names, file names, source code, titles, or topic text. See [activity format](docs/activity-format.md).
+`data/activity-inbox.jsonl` is optional. It accepts only numeric, metadata-only activity records; the application never reads prompts, responses, project names, file names, source code, titles, or topic text. The legacy Eframe client currently owns inbox and historical-import controls while they are ported to the Bevy inspector. See [activity format](docs/activity-format.md).
 
-First launch asks whether to import existing local Codex sessions. Accepting imports every discoverable session as neutral metadata-derived activity, then immediately advances the autonomous world. Conversation content remains unread; see [activity format](docs/activity-format.md) for exact boundaries.
+The legacy Eframe client can import existing local Codex sessions as neutral metadata-derived activity, then immediately advances the autonomous world. Conversation content remains unread; see [activity format](docs/activity-format.md) for exact boundaries.

@@ -90,6 +90,12 @@ struct BuildingPalette {
     keep: TextureHandle,
     houses: TextureHandle,
     huts: TextureHandle,
+    workshop: TextureHandle,
+    market: TextureHandle,
+    chapel: TextureHandle,
+    barracks: TextureHandle,
+    well: TextureHandle,
+    resources: TextureHandle,
 }
 
 impl SpriteAtlas {
@@ -109,26 +115,56 @@ impl SpriteAtlas {
                     keep: load_texture(ctx, "building-wood-keep", include_bytes!("../../../assets/MiniWorldSprites/Buildings/Wood/Keep.png"))?,
                     houses: load_texture(ctx, "building-wood-houses", include_bytes!("../../../assets/MiniWorldSprites/Buildings/Wood/Houses.png"))?,
                     huts: load_texture(ctx, "building-wood-huts", include_bytes!("../../../assets/MiniWorldSprites/Buildings/Wood/Huts.png"))?,
+                    workshop: load_texture(ctx, "building-wood-workshop", include_bytes!("../../../assets/MiniWorldSprites/Buildings/Wood/Workshops.png"))?,
+                    market: load_texture(ctx, "building-wood-market", include_bytes!("../../../assets/MiniWorldSprites/Buildings/Wood/Market.png"))?,
+                    chapel: load_texture(ctx, "building-wood-chapel", include_bytes!("../../../assets/MiniWorldSprites/Buildings/Wood/Chapels.png"))?,
+                    barracks: load_texture(ctx, "building-wood-barracks", include_bytes!("../../../assets/MiniWorldSprites/Buildings/Wood/Barracks.png"))?,
+                    well: load_texture(ctx, "building-wood-well", include_bytes!("../../../assets/MiniWorldSprites/Miscellaneous/Well.png"))?,
+                    resources: load_texture(ctx, "building-wood-resources", include_bytes!("../../../assets/MiniWorldSprites/Buildings/Wood/Resources.png"))?,
                 },
                 BuildingPalette {
                     keep: load_texture(ctx, "building-cyan-keep", include_bytes!("../../../assets/MiniWorldSprites/Buildings/Cyan/CyanKeep.png"))?,
                     houses: load_texture(ctx, "building-cyan-houses", include_bytes!("../../../assets/MiniWorldSprites/Buildings/Cyan/CyanHouses.png"))?,
                     huts: load_texture(ctx, "building-cyan-huts", include_bytes!("../../../assets/MiniWorldSprites/Buildings/Cyan/CyanHuts.png"))?,
+                    workshop: load_texture(ctx, "building-cyan-workshop", include_bytes!("../../../assets/MiniWorldSprites/Buildings/Cyan/CyanWorkshops.png"))?,
+                    market: load_texture(ctx, "building-cyan-market", include_bytes!("../../../assets/MiniWorldSprites/Buildings/Cyan/CyanMarket.png"))?,
+                    chapel: load_texture(ctx, "building-cyan-chapel", include_bytes!("../../../assets/MiniWorldSprites/Buildings/Cyan/CyanChapels.png"))?,
+                    barracks: load_texture(ctx, "building-cyan-barracks", include_bytes!("../../../assets/MiniWorldSprites/Buildings/Cyan/CyanBarracks.png"))?,
+                    well: load_texture(ctx, "building-cyan-well", include_bytes!("../../../assets/MiniWorldSprites/Miscellaneous/Well.png"))?,
+                    resources: load_texture(ctx, "building-cyan-resources", include_bytes!("../../../assets/MiniWorldSprites/Buildings/Cyan/CyanResources.png"))?,
                 },
                 BuildingPalette {
                     keep: load_texture(ctx, "building-lime-keep", include_bytes!("../../../assets/MiniWorldSprites/Buildings/Lime/LimeKeep.png"))?,
                     houses: load_texture(ctx, "building-lime-houses", include_bytes!("../../../assets/MiniWorldSprites/Buildings/Lime/LimeHouses.png"))?,
                     huts: load_texture(ctx, "building-lime-huts", include_bytes!("../../../assets/MiniWorldSprites/Buildings/Lime/LimeHuts.png"))?,
+                    workshop: load_texture(ctx, "building-lime-workshop", include_bytes!("../../../assets/MiniWorldSprites/Buildings/Lime/LimeWorkshops.png"))?,
+                    market: load_texture(ctx, "building-lime-market", include_bytes!("../../../assets/MiniWorldSprites/Buildings/Lime/LimeMarket.png"))?,
+                    chapel: load_texture(ctx, "building-lime-chapel", include_bytes!("../../../assets/MiniWorldSprites/Buildings/Lime/LimeChapels.png"))?,
+                    barracks: load_texture(ctx, "building-lime-barracks", include_bytes!("../../../assets/MiniWorldSprites/Buildings/Lime/LimeBarracks.png"))?,
+                    well: load_texture(ctx, "building-lime-well", include_bytes!("../../../assets/MiniWorldSprites/Miscellaneous/Well.png"))?,
+                    resources: load_texture(ctx, "building-lime-resources", include_bytes!("../../../assets/MiniWorldSprites/Buildings/Lime/LimeResources.png"))?,
                 },
                 BuildingPalette {
                     keep: load_texture(ctx, "building-purple-keep", include_bytes!("../../../assets/MiniWorldSprites/Buildings/Purple/PurpleKeep.png"))?,
                     houses: load_texture(ctx, "building-purple-houses", include_bytes!("../../../assets/MiniWorldSprites/Buildings/Purple/PurpleHouses.png"))?,
                     huts: load_texture(ctx, "building-purple-huts", include_bytes!("../../../assets/MiniWorldSprites/Buildings/Purple/PurpleHuts.png"))?,
+                    workshop: load_texture(ctx, "building-purple-workshop", include_bytes!("../../../assets/MiniWorldSprites/Buildings/Purple/PurpleWorkshops.png"))?,
+                    market: load_texture(ctx, "building-purple-market", include_bytes!("../../../assets/MiniWorldSprites/Buildings/Purple/PurpleMarket.png"))?,
+                    chapel: load_texture(ctx, "building-purple-chapel", include_bytes!("../../../assets/MiniWorldSprites/Buildings/Purple/PurpleChapels.png"))?,
+                    barracks: load_texture(ctx, "building-purple-barracks", include_bytes!("../../../assets/MiniWorldSprites/Buildings/Purple/PurpleBarracks.png"))?,
+                    well: load_texture(ctx, "building-purple-well", include_bytes!("../../../assets/MiniWorldSprites/Miscellaneous/Well.png"))?,
+                    resources: load_texture(ctx, "building-purple-resources", include_bytes!("../../../assets/MiniWorldSprites/Buildings/Purple/PurpleResources.png"))?,
                 },
                 BuildingPalette {
                     keep: load_texture(ctx, "building-red-keep", include_bytes!("../../../assets/MiniWorldSprites/Buildings/Red/RedKeep.png"))?,
                     houses: load_texture(ctx, "building-red-houses", include_bytes!("../../../assets/MiniWorldSprites/Buildings/Red/RedHouses.png"))?,
                     huts: load_texture(ctx, "building-red-huts", include_bytes!("../../../assets/MiniWorldSprites/Buildings/Red/RedHuts.png"))?,
+                    workshop: load_texture(ctx, "building-red-workshop", include_bytes!("../../../assets/MiniWorldSprites/Buildings/Red/RedWorkshops.png"))?,
+                    market: load_texture(ctx, "building-red-market", include_bytes!("../../../assets/MiniWorldSprites/Buildings/Red/RedMarket.png"))?,
+                    chapel: load_texture(ctx, "building-red-chapel", include_bytes!("../../../assets/MiniWorldSprites/Buildings/Red/RedChapels.png"))?,
+                    barracks: load_texture(ctx, "building-red-barracks", include_bytes!("../../../assets/MiniWorldSprites/Buildings/Red/RedBarracks.png"))?,
+                    well: load_texture(ctx, "building-red-well", include_bytes!("../../../assets/MiniWorldSprites/Miscellaneous/Well.png"))?,
+                    resources: load_texture(ctx, "building-red-resources", include_bytes!("../../../assets/MiniWorldSprites/Buildings/Red/RedResources.png"))?,
                 },
             ],
             walls: load_texture(ctx, "building-orc-walls", include_bytes!("../../../assets/MiniWorldSprites/Buildings/Enemy/Orc/Walls.png"))?,
@@ -779,7 +815,10 @@ impl eframe::App for ThreadNationsApp {
                 ui.label(egui::RichText::new(text).color(Color32::from_rgb(208, 201, 183)));
             });
         egui::SidePanel::right("nation-card")
-            .exact_width(250.0)
+            .resizable(true)
+            .default_width(320.0)
+            .width_range(260.0..=480.0)
+            .show_separator_line(true)
             .frame(
                 egui::Frame::default()
                     .fill(Color32::from_rgb(35, 36, 31))
@@ -1013,6 +1052,18 @@ fn passive_row(ui: &mut egui::Ui, label: &str, value: String) {
     ui.add_space(6.0);
 }
 
+fn economy_pair(ui: &mut egui::Ui, left: (&str, String), right: (&str, String)) {
+    ui.columns(2, |columns| {
+        for (ui, (label, value)) in columns.iter_mut().zip([left, right]) {
+            ui.horizontal_wrapped(|ui| {
+                ui.label(egui::RichText::new(label).color(Color32::from_rgb(153, 151, 137)));
+                ui.label(value);
+            });
+        }
+    });
+    ui.add_space(3.0);
+}
+
 fn nation_panel(ui: &mut egui::Ui, world: &World, nation: &Nation) {
     ui.label(
         egui::RichText::new(&nation.name)
@@ -1044,10 +1095,68 @@ fn nation_panel(ui: &mut egui::Ui, world: &World, nation: &Nation) {
     );
     ui.add_space(12.0);
     ui.label(egui::RichText::new("Economy").color(Color32::from_rgb(208, 201, 183)));
-    passive_row(ui, "Food stores", nation.food.to_string());
-    passive_row(ui, "Materials", nation.materials.to_string());
-    passive_row(ui, "Wealth", nation.wealth.to_string());
-    passive_row(ui, "Opportunity", nation.opportunity.to_string());
+    economy_pair(
+        ui,
+        ("Food", nation.food.to_string()),
+        (
+            "Net",
+            format!(
+                "+{} / -{}",
+                nation.economy.food_produced, nation.economy.food_consumed
+            ),
+        ),
+    );
+    economy_pair(
+        ui,
+        ("Materials", nation.materials.to_string()),
+        (
+            "Net",
+            format!(
+                "+{} / -{}",
+                nation.economy.materials_produced, nation.economy.materials_consumed
+            ),
+        ),
+    );
+    economy_pair(
+        ui,
+        ("Wealth", nation.wealth.to_string()),
+        ("Treasury", nation.economy.treasury.to_string()),
+    );
+    economy_pair(
+        ui,
+        (
+            "Tax",
+            format!(
+                "{}% (+{})",
+                nation.economy.tax_rate, nation.economy.taxes_collected
+            ),
+        ),
+        (
+            "Housing",
+            format!("{}/{}", nation.population, nation.economy.housing),
+        ),
+    );
+    economy_pair(
+        ui,
+        ("Education", format!("{}%", nation.economy.education)),
+        ("Health", format!("{}%", nation.economy.health)),
+    );
+    economy_pair(
+        ui,
+        ("Crime", format!("{}%", nation.economy.crime)),
+        ("Momentum", nation.opportunity.to_string()),
+    );
+    ui.horizontal_wrapped(|ui| {
+        ui.label(egui::RichText::new("Stores").color(Color32::from_rgb(153, 151, 137)));
+        ui.label(format!(
+            "wood {} · stone {} · ore {} · goods {} · medicine {}",
+            nation.economy.resources.wood,
+            nation.economy.resources.stone,
+            nation.economy.resources.ore,
+            nation.economy.resources.goods,
+            nation.economy.resources.medicine
+        ));
+    });
     ui.add_space(12.0);
     ui.label(egui::RichText::new("Relations").color(Color32::from_rgb(208, 201, 183)));
     for relation in nation_relations(world, nation.id) {
@@ -1740,6 +1849,29 @@ fn draw_persistent_paths(
     tile_size: f32,
 ) {
     for path in &world.paths {
+        for coord in std::iter::once(path.from)
+            .chain(path.tiles.iter().copied())
+            .chain(std::iter::once(path.to))
+            .filter(|coord| {
+                matches!(
+                    world.tile(*coord).terrain,
+                    TerrainType::Water
+                        | TerrainType::Ocean
+                        | TerrainType::Lake
+                        | TerrainType::River
+                )
+            })
+        {
+            painter.rect_filled(
+                Rect::from_center_size(position(coord), Vec2::splat(tile_size)),
+                0.0,
+                if path.trade_route.is_some() {
+                    Color32::from_rgb(151, 112, 60)
+                } else {
+                    Color32::from_rgb(123, 91, 53)
+                },
+            );
+        }
         let mut points = Vec::with_capacity(path.tiles.len() + 2);
         points.push(position(path.from));
         points.extend(path.tiles.iter().copied().map(position));
@@ -1826,6 +1958,42 @@ fn draw_buildings(
                 sprite_variation(building.location) % 5,
             ),
             BuildingKind::WheatField => draw_sprite(painter, &sprites.wheat, sprite_rect, 3),
+            BuildingKind::Workshop => draw_sprite(
+                painter,
+                &palette.workshop,
+                sprite_rect,
+                sprite_variation(building.location),
+            ),
+            BuildingKind::Market => draw_sprite(
+                painter,
+                &palette.market,
+                sprite_rect,
+                sprite_variation(building.location),
+            ),
+            BuildingKind::School | BuildingKind::Temple => draw_sprite(
+                painter,
+                &palette.chapel,
+                sprite_rect,
+                sprite_variation(building.location),
+            ),
+            BuildingKind::Barracks => draw_sprite(
+                painter,
+                &palette.barracks,
+                sprite_rect,
+                sprite_variation(building.location),
+            ),
+            BuildingKind::Clinic => draw_sprite(
+                painter,
+                &palette.well,
+                sprite_rect,
+                sprite_variation(building.location),
+            ),
+            BuildingKind::Mine | BuildingKind::Lumberyard => draw_sprite(
+                painter,
+                &palette.resources,
+                sprite_rect,
+                sprite_variation(building.location),
+            ),
         }
     }
 }
